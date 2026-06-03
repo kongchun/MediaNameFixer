@@ -16,6 +16,11 @@ pub fn run() {
         .setup(|app| {
             let config_manager = ConfigManager::new(&app.handle());
             app.manage(config_manager);
+            if let Some(window) = app.get_webview_window("main") {
+                if let Some(icon) = app.default_window_icon().cloned() {
+                    let _ = window.set_icon(icon);
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

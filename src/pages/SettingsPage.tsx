@@ -2,24 +2,26 @@ import { useEffect, useState } from "react";
 import { getConfig, setConfig } from "../api/tauri";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
-import { Settings, Save, Check } from "lucide-react";
+import { Settings, Save, Check, ArrowLeft } from "lucide-react";
 
 export default function SettingsPage() {
-  const { config, setConfig: setGlobalConfig } = useAppState();
+  const { config, setConfig: setGlobalConfig, setActiveTab } = useAppState();
   const [provider, setProvider] = useState(config.exif_provider);
   const [path, setPath] = useState(config.exiftool_path || "");
+  const [tolerance, setTolerance] = useState<number>(config.time_tolerance_seconds ?? 2);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     getConfig().then((c) => {
       setProvider(c.exif_provider);
       setPath(c.exiftool_path || "");
+      setTolerance(c.time_tolerance_seconds ?? 2);
       setGlobalConfig(c);
     });
   }, []);
 
   async function handleSave() {
-    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, last_folder: config.last_folder };
+    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, last_folder: config.last_folder, time_tolerance_seconds: tolerance };
     await setConfig(newCfg);
     setGlobalConfig(newCfg);
     setSaved(true);
@@ -31,6 +33,10 @@ export default function SettingsPage() {
       <div className="max-w-xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
+          <Button variant="ghost" size="sm" className="mr-2" onClick={() => setActiveTab("rename")}>
+            <ArrowLeft size={16} className="mr-1" />
+            返回
+          </Button>
           <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
             <Settings size={20} className="text-primary-foreground" />
           </div>
@@ -79,6 +85,24 @@ export default function SettingsPage() {
                 </p>
               </div>
             )}
+
+            {/* Time Tolerance */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                时间容差（秒）
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={60}
+                value={tolerance}
+                onChange={(e) => setTolerance(Number(e.target.value))}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground">
+                新老文件名解析出的拍摄时间相差在此秒数内时，视为相同文件名，默认 2 秒。
+              </p>
+            </div>
           </div>
 
           {/* Footer */}

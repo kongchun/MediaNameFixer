@@ -94,11 +94,13 @@ export function FileTree({
   rootPath,
   selectedPath,
   onSelect,
+  onQuickAccessSelect,
   recentPaths,
 }: {
   rootPath: string;
   selectedPath: string;
   onSelect: (path: string) => void;
+  onQuickAccessSelect?: (path: string) => void;
   recentPaths: string[];
 }) {
   const [quickAccess, setQuickAccess] = useState<QuickAccessItem[]>([]);
@@ -195,7 +197,13 @@ export function FileTree({
               "flex items-center py-1 px-2 cursor-pointer hover:bg-accent rounded-sm select-none",
               selectedPath === item.path && "bg-accent"
             )}
-            onClick={() => onSelect(item.path)}
+            onClick={() => {
+              if (onQuickAccessSelect) {
+                onQuickAccessSelect(item.path);
+              } else {
+                onSelect(item.path);
+              }
+            }}
           >
             <Folder size={16} className="mr-2 text-blue-500 flex-shrink-0" />
             <span className="text-sm truncate">{item.name}</span>

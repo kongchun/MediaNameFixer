@@ -1,5 +1,5 @@
 {
-  "name": "medianamefixer-app",
+  "name": "MediaNameFixer",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -28,6 +28,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.8.3",
     "vite": "^5.4.21"

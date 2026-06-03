@@ -14,11 +14,11 @@ import {
   RenameMode,
   ArchiveMode,
 } from "../types";
-import { computeRenamePreview, computeArchivePreview } from "../utils/preview";
+import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance } from "../utils/preview";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw } from "lucide-react";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -37,7 +37,7 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
 }
 
 export default function HomePage() {
-  const { folderPath, setFolderPath, activeTab } = useAppState();
+  const { folderPath, setFolderPath, activeTab, setActiveTab, config } = useAppState();
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [renameMode, setRenameMode] = useState<RenameMode>("ByDateTime");
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("ByYear");
@@ -78,7 +78,7 @@ export default function HomePage() {
   function addRecentPath(path: string) {
     setRecentPaths((prev) => {
       const filtered = prev.filter((p) => p !== path);
-      return [path, ...filtered].slice(0, 3);
+      return [path, ...filtered].slice(0, 5);
     });
   }
 
@@ -86,7 +86,7 @@ export default function HomePage() {
   useEffect(() => {
     getConfig().then((config) => {
       if (config.recent_folders.length > 0) {
-        setRecentPaths(config.recent_folders.slice(0, 10));
+        setRecentPaths(config.recent_folders.slice(0, 5));
       }
       if (config.last_folder) {
         const p = config.last_folder;
@@ -128,6 +128,18 @@ export default function HomePage() {
     selectNeedRename(list);
   }
 
+  async function handleQuickAccessSelect(path: string) {
+    setFolderPath(path);
+    setSelectedFolder(path);
+    addRecentPath(path);
+    if (path) {
+      addRecentFolder(path).catch(console.error);
+    }
+    const list = await scanFiles(path);
+    setFiles(list);
+    selectNeedRename(list);
+  }
+
   async function handleRefresh() {
     const target = selectedFolder || folderPath;
     if (!target) return;
@@ -137,9 +149,10 @@ export default function HomePage() {
   }
 
   async function handlePreviewRename() {
-    // 预览已自动计算，点击后去掉无需改名的勾选
+    // 预览已自动计算，点击后去掉无需改名的勾选（考虑时间容差）
+    const tolerance = config.time_tolerance_seconds ?? 2;
     const needRenamePaths = renameOps
-      .filter((op) => op.new_name !== op.old_name)
+      .filter((op) => !isWithinTimeTolerance(op.old_name, op.new_name, tolerance))
       .map((op) => op.old_path);
     updateSelectedPaths(needRenamePaths);
   }
@@ -247,8 +260,26 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部工具栏：只有操作选项 */}
+      {/* 顶部工具栏：菜单 + 操作 合并为一行 */}
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-card">
+        {/* 左侧：Tab 切换 */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={activeTab === "rename" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("rename")}
+          >
+            重命名
+          </Button>
+          <Button
+            variant={activeTab === "archive" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("archive")}
+          >
+            归档
+          </Button>
+        </div>
+
         <div className="flex-1" />
         {activeTab === "rename" && (
           <>
@@ -316,6 +347,7 @@ export default function HomePage() {
               rootPath={folderPath}
               selectedPath={selectedFolder}
               onSelect={handleTreeSelect}
+              onQuickAccessSelect={handleQuickAccessSelect}
               recentPaths={recentPaths}
             />
           </ScrollArea>
@@ -323,25 +355,26 @@ export default function HomePage() {
 
         {/* 右侧：路径/刷新 + 表格 + 筛选 */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* 路径和刷新 */}
+          {/* 路径和刷新 + 设置 */}
           <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
             <span className="text-xs text-muted-foreground truncate flex-1">
-              {folderPath || "未选择文件夹"}
+              {selectedFolder || folderPath || "未选择文件夹"}
             </span>
             <Button
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
               onClick={async () => {
-                if (!folderPath) return;
+                const target = selectedFolder || folderPath;
+                if (!target) return;
                 try {
-                  await openFolder(folderPath);
+                  await openFolder(target);
                 } catch (e) {
                   alert("打开文件夹失败: " + e);
                   console.error("打开文件夹失败:", e);
                 }
               }}
-              disabled={!folderPath}
+              disabled={!selectedFolder && !folderPath}
               title="打开当前文件夹"
             >
               <FolderOpen size={14} />
@@ -355,6 +388,15 @@ export default function HomePage() {
               title="刷新当前文件夹"
             >
               <RefreshCw size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setActiveTab("settings")}
+              title="设置"
+            >
+              <Wrench size={14} />
             </Button>
           </div>
 
@@ -469,7 +511,7 @@ export default function HomePage() {
                               className={`cursor-pointer ${
                                 manualRenameMap.has(file.path)
                                   ? "text-red-600 font-medium"
-                                  : finalNewName === file.name
+                                  : isWithinTimeTolerance(file.name, finalNewName, config.time_tolerance_seconds ?? 2)
                                     ? "text-muted-foreground"
                                     : "text-primary font-medium"
                               }`}

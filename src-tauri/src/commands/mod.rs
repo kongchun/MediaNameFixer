@@ -219,8 +219,8 @@ pub fn add_recent_folder(
     // 去重并移到最前面
     config.recent_folders.retain(|p| p != &folder_path);
     config.recent_folders.insert(0, folder_path);
-    // 最多保留 10 个
-    config.recent_folders.truncate(10);
+    // 最多保留 5 个
+    config.recent_folders.truncate(5);
     config_manager.set(config)
 }
 

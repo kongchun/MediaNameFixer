@@ -20,6 +20,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     exiftool_path: "",
     recent_folders: [],
     last_folder: undefined,
+    time_tolerance_seconds: 2,
   });
 
   return (

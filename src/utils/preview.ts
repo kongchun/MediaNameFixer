@@ -15,6 +15,29 @@ function formatDateForFilename(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+function extractDateTimeFromName(name: string): Date | null {
+  const re = /(\d{4})\D?(\d{2})\D?(\d{2})\D?(\d{2})\D?(\d{2})\D?(\d{2})/;
+  const m = re.exec(name);
+  if (!m) return null;
+  const d = new Date(
+    parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]),
+    parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+  );
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function isWithinTimeTolerance(oldName: string, newName: string, toleranceSeconds: number): boolean {
+  if (oldName === newName) return true;
+  if (toleranceSeconds <= 0) return oldName === newName;
+
+  const oldDt = extractDateTimeFromName(oldName);
+  const newDt = extractDateTimeFromName(newName);
+  if (!oldDt || !newDt) return oldName === newName;
+
+  const diff = Math.abs(oldDt.getTime() - newDt.getTime()) / 1000;
+  return diff <= toleranceSeconds;
+}
+
 function makeUniqueName(name: string, ext: string, used: Set<string>): string {
   const base = name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
   let candidate = name;
