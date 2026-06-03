@@ -121,7 +121,6 @@ export default function HomePage() {
 
   async function handleTreeSelect(path: string) {
     setSelectedFolder(path);
-    setFolderPath(path);
     addRecentPath(path);
     addRecentFolder(path).catch(console.error);
     const list = await scanFiles(path);
@@ -130,8 +129,9 @@ export default function HomePage() {
   }
 
   async function handleRefresh() {
-    if (!folderPath) return;
-    const list = await scanFiles(folderPath);
+    const target = selectedFolder || folderPath;
+    if (!target) return;
+    const list = await scanFiles(target);
     setFiles(list);
     selectNeedRename(list);
   }
