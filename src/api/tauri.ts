@@ -75,3 +75,7 @@ export async function setConfig(config: AppConfig): Promise<void> {
 export async function addRecentFolder(folderPath: string): Promise<void> {
   return invoke("add_recent_folder", { folderPath });
 }
+
+export async function openFolder(path: string): Promise<void> {
+  return invoke("open_folder", { path });
+}

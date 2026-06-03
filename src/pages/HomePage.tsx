@@ -6,8 +6,8 @@ import {
   executeArchive,
   getConfig,
   addRecentFolder,
+  openFolder,
 } from "../api/tauri";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAppState } from "../store";
 import {
   FileInfo,
@@ -335,8 +335,7 @@ export default function HomePage() {
               onClick={async () => {
                 if (!folderPath) return;
                 try {
-                  const url = "file:///" + folderPath.replace(/\\/g, "/");
-                  await openUrl(url);
+                  await openFolder(folderPath);
                 } catch (e) {
                   alert("打开文件夹失败: " + e);
                   console.error("打开文件夹失败:", e);
@@ -434,11 +433,29 @@ export default function HomePage() {
                               onChange={(e) => setEditingValue(e.target.value)}
                               onBlur={() => {
                                 setManualRenameMap(prev => new Map(prev).set(file.path, editingValue));
+                                setSelectedPaths(prev => {
+                                  const next = new Set(prev);
+                                  if (editingValue === file.name) {
+                                    next.delete(file.path);
+                                  } else {
+                                    next.add(file.path);
+                                  }
+                                  return next;
+                                });
                                 setEditingPath(null);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   setManualRenameMap(prev => new Map(prev).set(file.path, editingValue));
+                                  setSelectedPaths(prev => {
+                                    const next = new Set(prev);
+                                    if (editingValue === file.name) {
+                                      next.delete(file.path);
+                                    } else {
+                                      next.add(file.path);
+                                    }
+                                    return next;
+                                  });
                                   setEditingPath(null);
                                 } else if (e.key === "Escape") {
                                   setEditingPath(null);
@@ -449,7 +466,13 @@ export default function HomePage() {
                             />
                           ) : (
                             <span
-                              className={`cursor-pointer ${finalNewName === file.name ? "text-muted-foreground" : "text-primary font-medium"}`}
+                              className={`cursor-pointer ${
+                                manualRenameMap.has(file.path)
+                                  ? "text-red-600 font-medium"
+                                  : finalNewName === file.name
+                                    ? "text-muted-foreground"
+                                    : "text-primary font-medium"
+                              }`}
                               onClick={() => {
                                 setEditingPath(file.path);
                                 setEditingValue(finalNewName);

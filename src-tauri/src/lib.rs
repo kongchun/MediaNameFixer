@@ -30,6 +30,7 @@ pub fn run() {
             get_config,
             set_config,
             add_recent_folder,
+            open_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
