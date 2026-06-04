@@ -23,6 +23,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     last_folder: undefined,
     time_tolerance_seconds: 2,
     prefer_date_taken: false,
+    date_format: "YYYY-MM-DD HHmmss",
+    duplicate_suffix: "(c)",
   });
 
   return (

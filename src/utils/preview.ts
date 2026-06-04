@@ -10,9 +10,15 @@ function parseDateTime(s: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function formatDateForFilename(d: Date): string {
+function formatDateForFilename(d: Date, format: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  return format
+    .replace(/YYYY/g, String(d.getFullYear()))
+    .replace(/MM/g, pad(d.getMonth() + 1))
+    .replace(/DD/g, pad(d.getDate()))
+    .replace(/HH/g, pad(d.getHours()))
+    .replace(/mm/g, pad(d.getMinutes()))
+    .replace(/ss/g, pad(d.getSeconds()));
 }
 
 function extractDateTimeFromName(name: string): Date | null {
@@ -58,12 +64,13 @@ export function isOriginalEarlierThanNew(oldName: string, newName: string, toler
   return diff > toleranceSeconds;
 }
 
-function makeUniqueName(name: string, ext: string, used: Set<string>): string {
+function makeUniqueName(name: string, ext: string, used: Set<string>, suffixFormat: string): string {
   const base = name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
   let candidate = name;
   let idx = 1;
   while (used.has(candidate)) {
-    candidate = `${base}(${idx}).${ext}`;
+    const suffix = suffixFormat.replace(/c/g, String(idx));
+    candidate = `${base}${suffix}.${ext}`;
     idx++;
   }
   used.add(candidate);
@@ -75,12 +82,16 @@ export function computeRenamePreview(
   mode: RenameMode,
   selectedPaths: Set<string>,
   manualOverrides?: Map<string, "taken" | "modified">,
-  preferDateTaken?: boolean
+  preferDateTaken?: boolean,
+  dateFormat?: string,
+  duplicateSuffix?: string
 ): RenameOperation[] {
   const selectedFiles = files.filter((f) => selectedPaths.has(f.path));
   const usedNames = new Set<string>();
   // 只处理被选中文件之间的新名字冲突，不考虑文件夹中其他已有文件
   const ops: RenameOperation[] = [];
+  const fmt = dateFormat || "YYYY-MM-DD HHmmss";
+  const dupSuffix = duplicateSuffix || "(c)";
 
   for (const file of selectedFiles) {
     const extRaw = file.ext; // 保留原始扩展名大小写
@@ -120,7 +131,7 @@ export function computeRenamePreview(
       }
 
       if (dt) {
-        newName = `${formatDateForFilename(dt)}.${extRaw}`;
+        newName = `${formatDateForFilename(dt, fmt)}.${extRaw}`;
       }
     } else if (mode === "ByFileName") {
       const re = /(\d{4})\D?(\d{2})\D?(\d{2})\D?(\d{2})\D?(\d{2})\D?(\d{2})/;
@@ -131,7 +142,7 @@ export function computeRenamePreview(
     }
 
     if (newName) {
-      const uniqueName = makeUniqueName(newName, extRaw, usedNames);
+      const uniqueName = makeUniqueName(newName, extRaw, usedNames, dupSuffix);
       const dirSep = file.path.lastIndexOf("\\");
       const dir = dirSep >= 0 ? file.path.slice(0, dirSep + 1) : "";
       ops.push({

@@ -10,6 +10,7 @@ import {
   addFavoriteFolder,
   removeFavoriteFolder,
   openFolder,
+  openFile,
 } from "../api/tauri";
 import { useAppState } from "../store";
 import {
@@ -55,8 +56,8 @@ export default function HomePage() {
 
   const renameOps = useMemo(() => {
     if (activeTab !== "rename") return [];
-    return computeRenamePreview(files, renameMode, new Set(files.map((f) => f.path)), manualTimeSourceMap, config.prefer_date_taken);
-  }, [files, renameMode, activeTab, manualTimeSourceMap, config.prefer_date_taken]);
+    return computeRenamePreview(files, renameMode, new Set(files.map((f) => f.path)), manualTimeSourceMap, config.prefer_date_taken, config.date_format, config.duplicate_suffix);
+  }, [files, renameMode, activeTab, manualTimeSourceMap, config.prefer_date_taken, config.date_format, config.duplicate_suffix]);
 
   const archiveOps = useMemo(() => {
     if (activeTab !== "archive") return [];
@@ -512,7 +513,21 @@ export default function HomePage() {
                           onChange={() => toggleSelectFile(file.path)}
                         />
                       </td>
-                      <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && isOriginalEarlierThanNew(file.name, finalNewName, config.time_tolerance_seconds ?? 2) ? "text-red-600" : ""}`}>{file.name}</td>
+                      <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && isOriginalEarlierThanNew(file.name, finalNewName, config.time_tolerance_seconds ?? 2) ? "text-red-600" : ""}`}>
+                        <div className="flex items-center gap-1">
+                          <span className="flex-1">{file.name}</span>
+                          <button
+                            className="p-0.5 rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openFile(file.path);
+                            }}
+                            title="打开文件"
+                          >
+                            <ExternalLink size={14} />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-4 py-2">
                         {activeTab === "rename" && finalNewName ? (
                           editingPath === file.path ? (

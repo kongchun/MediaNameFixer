@@ -87,3 +87,7 @@ export async function removeFavoriteFolder(folderPath: string): Promise<void> {
 export async function openFolder(path: string): Promise<void> {
   return invoke("open_folder", { path });
 }
+
+export async function openFile(path: string): Promise<void> {
+  return invoke("open_file", { path });
+}

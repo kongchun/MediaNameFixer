@@ -79,6 +79,8 @@ pub struct AppConfig {
     pub favorite_folders: Vec<String>,
     pub time_tolerance_seconds: u32,
     pub prefer_date_taken: bool,
+    pub date_format: String,
+    pub duplicate_suffix: String,
 }
 
 impl Default for AppConfig {
@@ -91,6 +93,8 @@ impl Default for AppConfig {
             favorite_folders: Vec::new(),
             time_tolerance_seconds: 2,
             prefer_date_taken: false,
+            date_format: "YYYY-MM-DD HHmmss".to_string(),
+            duplicate_suffix: "(c)".to_string(),
         }
     }
 }

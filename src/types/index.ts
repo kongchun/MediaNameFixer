@@ -50,6 +50,8 @@ export interface AppConfig {
   favorite_folders: string[];
   time_tolerance_seconds?: number;
   prefer_date_taken?: boolean;
+  date_format?: string;
+  duplicate_suffix?: string;
 }
 
 export type Tab = "rename" | "archive" | "settings";

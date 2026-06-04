@@ -38,6 +38,7 @@ pub fn run() {
             add_favorite_folder,
             remove_favorite_folder,
             open_folder,
+            open_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
