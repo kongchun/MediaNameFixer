@@ -21,7 +21,7 @@ export default function SettingsPage() {
   }, []);
 
   async function handleSave() {
-    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, last_folder: config.last_folder, time_tolerance_seconds: tolerance };
+    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, favorite_folders: config.favorite_folders, last_folder: config.last_folder, time_tolerance_seconds: tolerance };
     await setConfig(newCfg);
     setGlobalConfig(newCfg);
     setSaved(true);
