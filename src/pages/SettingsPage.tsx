@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [provider, setProvider] = useState(config.exif_provider);
   const [path, setPath] = useState(config.exiftool_path || "");
   const [tolerance, setTolerance] = useState<number>(config.time_tolerance_seconds ?? 2);
+  const [preferDateTaken, setPreferDateTaken] = useState<boolean>(config.prefer_date_taken ?? false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -16,12 +17,13 @@ export default function SettingsPage() {
       setProvider(c.exif_provider);
       setPath(c.exiftool_path || "");
       setTolerance(c.time_tolerance_seconds ?? 2);
+      setPreferDateTaken(c.prefer_date_taken ?? false);
       setGlobalConfig(c);
     });
   }, []);
 
   async function handleSave() {
-    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, favorite_folders: config.favorite_folders, last_folder: config.last_folder, time_tolerance_seconds: tolerance };
+    const newCfg = { exif_provider: provider, exiftool_path: path || undefined, recent_folders: config.recent_folders, favorite_folders: config.favorite_folders, last_folder: config.last_folder, time_tolerance_seconds: tolerance, prefer_date_taken: preferDateTaken };
     await setConfig(newCfg);
     setGlobalConfig(newCfg);
     setSaved(true);
@@ -101,6 +103,22 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground">
                 新老文件名解析出的拍摄时间相差在此秒数内时，视为相同文件名，默认 2 秒。
+              </p>
+            </div>
+
+            {/* Prefer Date Taken */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={preferDateTaken}
+                  onChange={(e) => setPreferDateTaken(e.target.checked)}
+                  className="rounded border-input"
+                />
+                优先拍摄时间
+              </label>
+              <p className="text-xs text-muted-foreground">
+                勾选后，按时间日期重命名时，只要文件有拍摄时间（EXIF），就直接使用拍摄时间作为新文件名，不再比较修改时间取最早。
               </p>
             </div>
           </div>

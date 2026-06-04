@@ -73,7 +73,9 @@ function makeUniqueName(name: string, ext: string, used: Set<string>): string {
 export function computeRenamePreview(
   files: FileInfo[],
   mode: RenameMode,
-  selectedPaths: Set<string>
+  selectedPaths: Set<string>,
+  manualOverrides?: Map<string, "taken" | "modified">,
+  preferDateTaken?: boolean
 ): RenameOperation[] {
   const selectedFiles = files.filter((f) => selectedPaths.has(f.path));
   const usedNames = new Set<string>();
@@ -91,17 +93,30 @@ export function computeRenamePreview(
       const modified = file.date_modified ? parseDateTime(file.date_modified) : null;
 
       let dt: Date | null = null;
-      if (taken) {
+      const override = manualOverrides?.get(file.path);
+
+      if (override === "taken" && taken) {
         dt = taken;
         timeSource = "exif";
-      }
-      if (created && (dt === null || created.getTime() < dt.getTime())) {
-        dt = created;
-        timeSource = "created";
-      }
-      if (modified && (dt === null || modified.getTime() < dt.getTime())) {
+      } else if (override === "modified" && modified) {
         dt = modified;
         timeSource = "modified";
+      } else if (preferDateTaken && taken) {
+        dt = taken;
+        timeSource = "exif";
+      } else {
+        if (taken) {
+          dt = taken;
+          timeSource = "exif";
+        }
+        if (created && (dt === null || created.getTime() < dt.getTime())) {
+          dt = created;
+          timeSource = "created";
+        }
+        if (modified && (dt === null || modified.getTime() < dt.getTime())) {
+          dt = modified;
+          timeSource = "modified";
+        }
       }
 
       if (dt) {

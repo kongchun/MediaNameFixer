@@ -22,6 +22,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     favorite_folders: [],
     last_folder: undefined,
     time_tolerance_seconds: 2,
+    prefer_date_taken: false,
   });
 
   return (

@@ -78,6 +78,7 @@ pub struct AppConfig {
     pub recent_folders: Vec<String>,
     pub favorite_folders: Vec<String>,
     pub time_tolerance_seconds: u32,
+    pub prefer_date_taken: bool,
 }
 
 impl Default for AppConfig {
@@ -89,6 +90,7 @@ impl Default for AppConfig {
             recent_folders: Vec::new(),
             favorite_folders: Vec::new(),
             time_tolerance_seconds: 2,
+            prefer_date_taken: false,
         }
     }
 }

@@ -5,6 +5,7 @@ import {
   executeRename,
   executeArchive,
   getConfig,
+  setConfig,
   addRecentFolder,
   addFavoriteFolder,
   removeFavoriteFolder,
@@ -20,7 +21,7 @@ import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, isO
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink } from "lucide-react";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -48,13 +49,14 @@ export default function HomePage() {
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [manualRenameMap, setManualRenameMap] = useState<Map<string, string>>(new Map());
+  const [manualTimeSourceMap, setManualTimeSourceMap] = useState<Map<string, "taken" | "modified">>(new Map());
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
 
   const renameOps = useMemo(() => {
     if (activeTab !== "rename") return [];
-    return computeRenamePreview(files, renameMode, new Set(files.map((f) => f.path)));
-  }, [files, renameMode, activeTab]);
+    return computeRenamePreview(files, renameMode, new Set(files.map((f) => f.path)), manualTimeSourceMap, config.prefer_date_taken);
+  }, [files, renameMode, activeTab, manualTimeSourceMap, config.prefer_date_taken]);
 
   const archiveOps = useMemo(() => {
     if (activeTab !== "archive") return [];
@@ -155,11 +157,24 @@ export default function HomePage() {
   }
 
   async function handleRefresh() {
+    setManualTimeSourceMap(new Map());
     const target = selectedFolder || folderPath;
     if (!target) return;
     const list = await scanFiles(target);
     setFiles(list);
     selectNeedRename(list);
+  }
+
+  function handleToggleTimeSource(path: string, source: "taken" | "modified") {
+    setManualTimeSourceMap((prev) => {
+      const next = new Map(prev);
+      if (next.get(path) === source) {
+        next.delete(path);
+      } else {
+        next.set(path, source);
+      }
+      return next;
+    });
   }
 
   async function handlePreviewRename() {
@@ -190,6 +205,7 @@ export default function HomePage() {
     if (opsToExecute.length === 0) return;
     await executeRename(opsToExecute);
     setManualRenameMap(new Map());
+    setManualTimeSourceMap(new Map());
     setEditingPath(null);
     const list = await scanFiles(folderPath);
     setFiles(list);
@@ -305,6 +321,21 @@ export default function HomePage() {
               <option value="ByDateTime">按时间日期</option>
               <option value="ByFileName">按文件名称</option>
             </select>
+            {renameMode === "ByDateTime" && (
+              <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none ml-1">
+                <input
+                  type="checkbox"
+                  checked={config.prefer_date_taken ?? false}
+                  onChange={async (e) => {
+                    const newCfg = { ...config, prefer_date_taken: e.target.checked };
+                    setGlobalConfig(newCfg);
+                    await setConfig(newCfg);
+                  }}
+                  className="rounded border-input"
+                />
+                优先拍摄时间
+              </label>
+            )}
             <Button size="sm" variant="secondary" onClick={handlePreviewRename} disabled={selectedPaths.size === 0}>
               <Eye size={14} className="mr-2" />
               预览
@@ -473,7 +504,7 @@ export default function HomePage() {
                   const targetFolder = archiveMap.get(file.path);
                   const dateInfo = previewDateMap.get(file.path);
                   return (
-                    <tr key={i} className={`hover:bg-accent/50 transition-colors ${!isChecked ? 'opacity-50' : ''}`}>
+                    <tr key={i} className={`hover:bg-accent/50 transition-colors group ${!isChecked ? 'opacity-50' : ''}`}>
                       <td className="px-2 py-2 text-center">
                         <input
                           type="checkbox"
@@ -558,7 +589,21 @@ export default function HomePage() {
                           })()
                         }`}
                       >
-                        {dateInfo?.date_taken || file.date_taken || "-"}
+                        <div className="flex items-center gap-1">
+                          <span className="flex-1">{dateInfo?.date_taken || file.date_taken || "-"}</span>
+                          {activeTab === "rename" && (dateInfo?.date_taken || file.date_taken) && (
+                            <button
+                              className={`p-0.5 rounded hover:bg-accent flex-shrink-0 ${manualTimeSourceMap.get(file.path) === "taken" ? "text-green-600 opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100"}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTimeSource(file.path, "taken");
+                              }}
+                              title={manualTimeSourceMap.get(file.path) === "taken" ? "取消使用拍摄时间" : "使用拍摄时间命名"}
+                            >
+                              <Check size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td
                         className={`px-4 py-2 text-xs ${
@@ -567,7 +612,21 @@ export default function HomePage() {
                             : "text-muted-foreground"
                         }`}
                       >
-                        {dateInfo?.date_modified || file.date_modified || "-"}
+                        <div className="flex items-center gap-1">
+                          <span className="flex-1">{dateInfo?.date_modified || file.date_modified || "-"}</span>
+                          {activeTab === "rename" && (dateInfo?.date_modified || file.date_modified) && (
+                            <button
+                              className={`p-0.5 rounded hover:bg-accent flex-shrink-0 ${manualTimeSourceMap.get(file.path) === "modified" ? "text-green-600 opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100"}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTimeSource(file.path, "modified");
+                              }}
+                              title={manualTimeSourceMap.get(file.path) === "modified" ? "取消使用修改时间" : "使用修改时间命名"}
+                            >
+                              <Check size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
