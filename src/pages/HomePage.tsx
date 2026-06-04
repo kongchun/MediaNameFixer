@@ -18,7 +18,7 @@ import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance } fr
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench } from "lucide-react";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -377,7 +377,7 @@ export default function HomePage() {
               disabled={!selectedFolder && !folderPath}
               title="打开当前文件夹"
             >
-              <FolderOpen size={14} />
+              <ExternalLink size={14} />
             </Button>
             <Button
               variant="ghost"
