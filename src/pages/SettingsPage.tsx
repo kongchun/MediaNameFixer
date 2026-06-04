@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { getConfig, setConfig } from "../api/tauri";
+import { getConfig, setConfig, openUrl } from "../api/tauri";
+import { checkRemoteVersion, isNewVersion, type VersionInfo } from "../api/update";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Settings, Save, Check, ArrowLeft, RotateCcw } from "lucide-react";
+import { Settings, Save, Check, ArrowLeft, RotateCcw, RefreshCw, ExternalLink } from "lucide-react";
 
 type MenuKey = "general" | "format" | "about";
 
@@ -17,6 +18,8 @@ export default function SettingsPage() {
   const [dateFormat, setDateFormat] = useState<string>(config.date_format ?? "YYYY-MM-DD HHmmss");
   const [duplicateSuffix, setDuplicateSuffix] = useState<string>(config.duplicate_suffix ?? "(c)");
   const [saved, setSaved] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "has-update" | "latest" | "error">("idle");
+  const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 
   useEffect(() => {
     getConfig().then((c) => {
@@ -283,10 +286,65 @@ export default function SettingsPage() {
           {activeMenu === "about" && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
               <div className="p-6 space-y-4">
-                <div className="space-y-1">
+                <div className="space-y-3">
                   <h2 className="text-sm font-semibold">关于</h2>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>版本：0.1.0</p>
+                    <div className="flex items-center gap-2">
+                      <span>版本：0.1.4</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updateStatus === "checking"}
+                        onClick={async () => {
+                          setUpdateStatus("checking");
+                          const info = await checkRemoteVersion();
+                          if (info && isNewVersion("0.1.4", info.version)) {
+                            setUpdateInfo(info);
+                            setUpdateStatus("has-update");
+                          } else if (info) {
+                            setUpdateStatus("latest");
+                          } else {
+                            setUpdateStatus("error");
+                          }
+                        }}
+                      >
+                        {updateStatus === "checking" ? (
+                          <RefreshCw size={14} className="mr-1 animate-spin" />
+                        ) : (
+                          <RefreshCw size={14} className="mr-1" />
+                        )}
+                        检查更新
+                      </Button>
+                    </div>
+
+                    {updateStatus === "has-update" && updateInfo && (
+                      <div className="rounded-md bg-green-50 border border-green-200 p-3 space-y-2">
+                        <p className="text-sm text-green-700 font-medium">
+                          发现新版本：{updateInfo.version}
+                        </p>
+                        {updateInfo.releaseNotes && (
+                          <p className="text-xs text-green-600">{updateInfo.releaseNotes}</p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-green-300 text-green-700 hover:bg-green-100"
+                          onClick={() => openUrl(updateInfo.downloadUrl)}
+                        >
+                          <ExternalLink size={14} className="mr-1" />
+                          立即下载
+                        </Button>
+                      </div>
+                    )}
+
+                    {updateStatus === "latest" && (
+                      <p className="text-sm text-green-600">当前已是最新版本</p>
+                    )}
+
+                    {updateStatus === "error" && (
+                      <p className="text-sm text-orange-600">检查失败，请检查网络连接</p>
+                    )}
+
                     <p>作者：天堂龙</p>
                     <p>QQ群：72135582</p>
                     <p>

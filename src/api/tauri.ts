@@ -91,3 +91,7 @@ export async function openFolder(path: string): Promise<void> {
 export async function openFile(path: string): Promise<void> {
   return invoke("open_file", { path });
 }
+
+export async function openUrl(url: string): Promise<void> {
+  return invoke("open_url", { url });
+}

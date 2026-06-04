@@ -11,7 +11,9 @@ import {
   removeFavoriteFolder,
   openFolder,
   openFile,
+  openUrl,
 } from "../api/tauri";
+import { checkRemoteVersion, isNewVersion, type VersionInfo } from "../api/update";
 import { useAppState } from "../store";
 import {
   FileInfo,
@@ -53,6 +55,7 @@ export default function HomePage() {
   const [manualTimeSourceMap, setManualTimeSourceMap] = useState<Map<string, "taken" | "modified">>(new Map());
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
+  const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 
   const renameOps = useMemo(() => {
     if (activeTab !== "rename") return [];
@@ -102,6 +105,13 @@ export default function HomePage() {
           setFiles(list);
           selectNeedRename(list);
         }).catch(console.error);
+      }
+    }).catch(console.error);
+
+    // 检查更新
+    checkRemoteVersion().then((info) => {
+      if (info && isNewVersion("0.1.4", info.version)) {
+        setUpdateInfo(info);
       }
     }).catch(console.error);
   }, []);
@@ -686,6 +696,28 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* 更新提示对话框 */}
+      {updateInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border">
+            <h3 className="text-lg font-semibold mb-2">发现新版本</h3>
+            <div className="text-sm text-muted-foreground space-y-1 mb-4">
+              <p>当前版本：0.1.4</p>
+              <p>最新版本：{updateInfo.version}</p>
+              {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setUpdateInfo(null)}>
+                稍后提醒
+              </Button>
+              <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setUpdateInfo(null); }}>
+                立即更新
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

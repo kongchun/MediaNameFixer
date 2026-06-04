@@ -1,6 +1,6 @@
 [package]
 name = "medianamefixer"
-version = "0.1.0"
+version = "0.1.4"
 description = "MediaNameFixer"
 authors = ["you"]
 edition = "2021"
