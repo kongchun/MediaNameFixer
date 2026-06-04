@@ -96,12 +96,16 @@ export function FileTree({
   onSelect,
   onQuickAccessSelect,
   recentPaths,
+  favoriteFolders,
+  onToggleFavorite,
 }: {
   rootPath: string;
   selectedPath: string;
   onSelect: (path: string) => void;
   onQuickAccessSelect?: (path: string) => void;
   recentPaths: string[];
+  favoriteFolders: string[];
+  onToggleFavorite?: (path: string) => void;
 }) {
   const [quickAccess, setQuickAccess] = useState<QuickAccessItem[]>([]);
   const [root, setRoot] = useState<TreeNode | null>(null);
@@ -209,6 +213,40 @@ export function FileTree({
             <span className="text-sm truncate">{item.name}</span>
           </div>
         ))}
+        {favoriteFolders.length > 0 && (
+          <>
+            <div className="my-1 border-t border-border/50" />
+            {favoriteFolders.map((path) => (
+              <div
+                key={path}
+                className={cn(
+                  "flex items-center py-1 px-2 cursor-pointer hover:bg-accent rounded-sm select-none group",
+                  selectedPath === path && "bg-accent"
+                )}
+                onClick={() => {
+                  if (onQuickAccessSelect) {
+                    onQuickAccessSelect(path);
+                  } else {
+                    onSelect(path);
+                  }
+                }}
+              >
+                <Folder size={16} className="mr-2 text-yellow-500 flex-shrink-0" />
+                <span className="text-sm truncate flex-1">{path.split("\\").pop() || path}</span>
+                <span
+                  className="ml-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite?.(path);
+                  }}
+                  title="取消收藏"
+                >
+                  <Star size={14} className="text-yellow-500" fill="currentColor" />
+                </span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {/* 最近访问 */}
@@ -218,21 +256,41 @@ export function FileTree({
             <Clock size={12} />
             最近访问
           </div>
-          {recentPaths.map((path) => (
-            <div
-              key={path}
-              className={cn(
-                "flex items-center py-1 px-2 cursor-pointer hover:bg-accent rounded-sm select-none",
-                selectedPath === path && "bg-accent"
-              )}
-              onClick={() => onSelect(path)}
-            >
-              <Folder size={16} className="mr-2 text-yellow-500 flex-shrink-0" />
-              <span className="text-sm truncate">
-                {path.split("\\").pop() || path}
-              </span>
-            </div>
-          ))}
+          {recentPaths.map((path) => {
+            const isFav = favoriteFolders.includes(path);
+            return (
+              <div
+                key={path}
+                className={cn(
+                  "flex items-center py-1 px-2 cursor-pointer hover:bg-accent rounded-sm select-none group",
+                  selectedPath === path && "bg-accent"
+                )}
+                onClick={() => onSelect(path)}
+              >
+                <Folder size={16} className="mr-2 text-yellow-500 flex-shrink-0" />
+                <span className="text-sm truncate flex-1">
+                  {path.split("\\").pop() || path}
+                </span>
+                <span
+                  className={cn(
+                    "ml-1 p-0.5 rounded hover:bg-accent",
+                    isFav ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite?.(path);
+                  }}
+                  title={isFav ? "取消收藏" : "收藏"}
+                >
+                  <Star
+                    size={14}
+                    className={isFav ? "text-yellow-500" : "text-muted-foreground"}
+                    fill={isFav ? "currentColor" : "none"}
+                  />
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 

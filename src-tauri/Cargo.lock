@@ -2004,7 +2004,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "medianamefixer-app"
+name = "medianamefixer"
 version = "0.1.0"
 dependencies = [
  "chrono",

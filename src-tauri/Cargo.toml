@@ -1,7 +1,7 @@
 [package]
-name = "medianamefixer-app"
+name = "medianamefixer"
 version = "0.1.0"
-description = "A Tauri App"
+description = "MediaNameFixer"
 authors = ["you"]
 edition = "2021"
 

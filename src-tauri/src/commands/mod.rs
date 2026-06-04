@@ -225,6 +225,28 @@ pub fn add_recent_folder(
 }
 
 #[tauri::command]
+pub fn add_favorite_folder(
+    folder_path: String,
+    config_manager: State<'_, ConfigManager>,
+) -> Result<(), String> {
+    let mut config = config_manager.get();
+    if !config.favorite_folders.contains(&folder_path) {
+        config.favorite_folders.push(folder_path);
+    }
+    config_manager.set(config)
+}
+
+#[tauri::command]
+pub fn remove_favorite_folder(
+    folder_path: String,
+    config_manager: State<'_, ConfigManager>,
+) -> Result<(), String> {
+    let mut config = config_manager.get();
+    config.favorite_folders.retain(|p| p != &folder_path);
+    config_manager.set(config)
+}
+
+#[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {

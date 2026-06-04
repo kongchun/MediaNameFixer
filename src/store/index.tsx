@@ -19,6 +19,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     exif_provider: "kamadak",
     exiftool_path: "",
     recent_folders: [],
+    favorite_folders: [],
     last_folder: undefined,
     time_tolerance_seconds: 2,
   });

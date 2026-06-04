@@ -6,6 +6,8 @@ import {
   executeArchive,
   getConfig,
   addRecentFolder,
+  addFavoriteFolder,
+  removeFavoriteFolder,
   openFolder,
 } from "../api/tauri";
 import { useAppState } from "../store";
@@ -14,7 +16,7 @@ import {
   RenameMode,
   ArchiveMode,
 } from "../types";
-import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance } from "../utils/preview";
+import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, isOriginalEarlierThanNew } from "../utils/preview";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
@@ -37,7 +39,7 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
 }
 
 export default function HomePage() {
-  const { folderPath, setFolderPath, activeTab, setActiveTab, config } = useAppState();
+  const { folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig: setGlobalConfig } = useAppState();
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [renameMode, setRenameMode] = useState<RenameMode>("ByDateTime");
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("ByYear");
@@ -84,12 +86,13 @@ export default function HomePage() {
 
   // 启动时读取配置，自动加载上次文件夹
   useEffect(() => {
-    getConfig().then((config) => {
-      if (config.recent_folders.length > 0) {
-        setRecentPaths(config.recent_folders.slice(0, 5));
+    getConfig().then((cfg) => {
+      setGlobalConfig(cfg);
+      if (cfg.recent_folders.length > 0) {
+        setRecentPaths(cfg.recent_folders.slice(0, 5));
       }
-      if (config.last_folder) {
-        const p = config.last_folder;
+      if (cfg.last_folder) {
+        const p = cfg.last_folder;
         setFolderPath(p);
         setSelectedFolder(p);
         scanFiles(p).then((list) => {
@@ -138,6 +141,17 @@ export default function HomePage() {
     const list = await scanFiles(path);
     setFiles(list);
     selectNeedRename(list);
+  }
+
+  async function handleToggleFavorite(path: string) {
+    const isFav = config.favorite_folders.includes(path);
+    if (isFav) {
+      await removeFavoriteFolder(path);
+    } else {
+      await addFavoriteFolder(path);
+    }
+    const cfg = await getConfig();
+    setGlobalConfig(cfg);
   }
 
   async function handleRefresh() {
@@ -349,6 +363,8 @@ export default function HomePage() {
               onSelect={handleTreeSelect}
               onQuickAccessSelect={handleQuickAccessSelect}
               recentPaths={recentPaths}
+              favoriteFolders={config.favorite_folders}
+              onToggleFavorite={handleToggleFavorite}
             />
           </ScrollArea>
         </div>
@@ -465,7 +481,7 @@ export default function HomePage() {
                           onChange={() => toggleSelectFile(file.path)}
                         />
                       </td>
-                      <td className="px-4 py-2 font-medium">{file.name}</td>
+                      <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && isOriginalEarlierThanNew(file.name, finalNewName, config.time_tolerance_seconds ?? 2) ? "text-red-600" : ""}`}>{file.name}</td>
                       <td className="px-4 py-2">
                         {activeTab === "rename" && finalNewName ? (
                           editingPath === file.path ? (
@@ -533,9 +549,13 @@ export default function HomePage() {
                       </td>
                       <td
                         className={`px-4 py-2 text-xs ${
-                          dateInfo?.time_source === "exif" || dateInfo?.time_source === "video"
-                            ? "text-green-600 font-semibold"
-                            : "text-muted-foreground"
+                          (() => {
+                            const taken = dateInfo?.date_taken || file.date_taken;
+                            const modified = dateInfo?.date_modified || file.date_modified;
+                            if (taken && modified && taken > modified) return "text-red-600 font-semibold";
+                            if (dateInfo?.time_source === "exif" || dateInfo?.time_source === "video") return "text-green-600 font-semibold";
+                            return "text-muted-foreground";
+                          })()
                         }`}
                       >
                         {dateInfo?.date_taken || file.date_taken || "-"}

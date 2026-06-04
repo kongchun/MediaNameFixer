@@ -76,6 +76,14 @@ export async function addRecentFolder(folderPath: string): Promise<void> {
   return invoke("add_recent_folder", { folderPath });
 }
 
+export async function addFavoriteFolder(folderPath: string): Promise<void> {
+  return invoke("add_favorite_folder", { folderPath });
+}
+
+export async function removeFavoriteFolder(folderPath: string): Promise<void> {
+  return invoke("remove_favorite_folder", { folderPath });
+}
+
 export async function openFolder(path: string): Promise<void> {
   return invoke("open_folder", { path });
 }

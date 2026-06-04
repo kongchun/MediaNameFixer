@@ -121,6 +121,27 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+        {/* About */}
+        <div className="mt-6 rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="p-6 space-y-3">
+            <h2 className="text-sm font-semibold">关于</h2>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>作者：天堂龙</p>
+              <p>QQ群：72135582</p>
+              <p>
+                主页：
+                <a
+                  href="https://techwebplus.cn/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  https://techwebplus.cn/
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

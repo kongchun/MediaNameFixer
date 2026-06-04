@@ -35,6 +35,8 @@ pub fn run() {
             get_config,
             set_config,
             add_recent_folder,
+            add_favorite_folder,
+            remove_favorite_folder,
             open_folder,
         ])
         .run(tauri::generate_context!())
