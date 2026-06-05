@@ -327,15 +327,28 @@ export default function SettingsPage() {
                         {updateInfo.releaseNotes && (
                           <p className="text-xs text-green-600">{updateInfo.releaseNotes}</p>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-green-300 text-green-700 hover:bg-green-100"
-                          onClick={() => openUrl(updateInfo.downloadUrl)}
-                        >
-                          <ExternalLink size={14} className="mr-1" />
-                          立即下载
-                        </Button>
+                        <div className="flex gap-2 flex-wrap">
+                          {updateInfo["downloadurl-github"] && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-green-300 text-green-700 hover:bg-green-100"
+                              onClick={() => openUrl(updateInfo["downloadurl-github"]!)}
+                            >
+                              <ExternalLink size={14} className="mr-1" />
+                              GitHub 下载
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-green-300 text-green-700 hover:bg-green-100"
+                            onClick={() => openUrl(updateInfo.downloadUrl)}
+                          >
+                            <ExternalLink size={14} className="mr-1" />
+                            立即下载
+                          </Button>
+                        </div>
                       </div>
                     )}
 

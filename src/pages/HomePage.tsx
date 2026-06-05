@@ -830,10 +830,15 @@ export default function HomePage() {
               <p>最新版本：{updateInfo.version}</p>
               {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => setUpdateInfo(null)}>
                 稍后提醒
               </Button>
+              {updateInfo["downloadurl-github"] && (
+                <Button variant="outline" size="sm" onClick={() => { openUrl(updateInfo["downloadurl-github"]!); setUpdateInfo(null); }}>
+                  GitHub 下载
+                </Button>
+              )}
               <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setUpdateInfo(null); }}>
                 立即更新
               </Button>

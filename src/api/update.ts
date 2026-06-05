@@ -6,6 +6,8 @@ const UPDATE_URLS = [
 export interface VersionInfo {
   version: string;
   downloadUrl: string;
+  "downloadUrl-local"?: string;
+  "downloadurl-github"?: string;
   releaseNotes?: string;
 }
 
