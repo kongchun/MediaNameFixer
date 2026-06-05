@@ -40,6 +40,8 @@ export default function SettingsPage() {
       recent_folders: config.recent_folders,
       favorite_folders: config.favorite_folders,
       last_folder: config.last_folder,
+      last_selected_folder: config.last_selected_folder,
+      expanded_paths: config.expanded_paths,
       time_tolerance_seconds: tolerance,
       prefer_date_taken: preferDateTaken,
       date_format: dateFormat,
@@ -53,7 +55,7 @@ export default function SettingsPage() {
 
   const menuItems: { key: MenuKey; label: string }[] = [
     { key: "general", label: "基本设置" },
-    { key: "format", label: "文件名格式" },
+    { key: "format", label: "命名格式" },
     { key: "about", label: "关于" },
   ];
 
@@ -290,7 +292,7 @@ export default function SettingsPage() {
                   <h2 className="text-sm font-semibold">关于</h2>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-2">
-                      <span>版本：0.1.5</span>
+                      <span>版本：0.1.6</span>
                       <Button
                         size="sm"
                         variant="outline"
@@ -298,7 +300,7 @@ export default function SettingsPage() {
                         onClick={async () => {
                           setUpdateStatus("checking");
                           const info = await checkRemoteVersion();
-                          if (info && isNewVersion("0.1.5", info.version)) {
+                          if (info && isNewVersion("0.1.6", info.version)) {
                             setUpdateInfo(info);
                             setUpdateStatus("has-update");
                           } else if (info) {

@@ -1,5 +1,6 @@
 {
-  "version": "0.1.5",
-  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.5_x64-setup.exe",
-  "releaseNotes": "1. 启动自动恢复上次文件夹结构和选中节点\n2. 树节点展开状态持久化记忆\n3. 执行改名前检测链式冲突并弹窗提醒\n4. 自定义弹窗风格与UI统一\n5. 智能选择支持用户自定义日期格式匹配\n6. 链式重命名采用临时名方案避免覆盖\n7. 执行改名后保持当前目录不跳转\n8. 树节点支持双击展开\n9. 文件列表新增统计信息和筛选模式\n10. 优先拍摄时间选项移至列头快捷操作\n11. 预览按钮改名为智能选择并优化视觉层次"
+  "version": "0.1.6",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.6_x64-setup.exe",
+  "downloadUrl-local": "http://10.67.11.158:8000/medianamefixer/MediaNameFixer_0.1.6_x64-setup.exe",
+  "releaseNotes": "1. 修复配置保存不生效问题（兼容旧版配置）\n2. 智能选择支持自定义重复后缀格式匹配\n3. 新旧文件名一致时自动取消勾选\n4. 设置菜单改名为命名格式\n5. 状态持久化与冲突检测优化"
 }

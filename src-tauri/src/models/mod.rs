@@ -71,6 +71,7 @@ pub struct QuickAccessItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
     pub exif_provider: String,
     pub exiftool_path: Option<String>,

@@ -128,7 +128,7 @@ export default function HomePage() {
 
     // 检查更新
     checkRemoteVersion().then((info) => {
-      if (info && isNewVersion("0.1.5", info.version)) {
+      if (info && isNewVersion("0.1.6", info.version)) {
         setUpdateInfo(info);
       }
     }).catch(console.error);
@@ -222,11 +222,17 @@ export default function HomePage() {
       .replace(/HH/g, "\\d{2}")
       .replace(/mm/g, "\\d{2}")
       .replace(/ss/g, "\\d{2}");
-    const standardFormat = new RegExp(`^${pattern}(?:\\(\\d+\\))?$`);
+    // 重复后缀模式：c 替换为 \d+
+    const suffixPattern = (config.duplicate_suffix || "(c)")
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/c/g, "\\d+");
+    const standardFormat = new RegExp(`^${pattern}(?:${suffixPattern})?$`);
 
     // 第一步：按格式+容差判断初始是否需要改名
     const needRenameSet = new Set<string>();
     for (const op of renameOps) {
+      // 新旧文件名完全一致，无需改名
+      if (op.old_name === op.new_name) continue;
       const baseName = op.old_name.includes(".")
         ? op.old_name.slice(0, op.old_name.lastIndexOf("."))
         : op.old_name;
@@ -820,7 +826,7 @@ export default function HomePage() {
           <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border">
             <h3 className="text-lg font-semibold mb-2">发现新版本</h3>
             <div className="text-sm text-muted-foreground space-y-1 mb-4">
-              <p>当前版本：0.1.5</p>
+              <p>当前版本：0.1.6</p>
               <p>最新版本：{updateInfo.version}</p>
               {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
             </div>
