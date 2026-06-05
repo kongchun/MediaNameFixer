@@ -68,11 +68,6 @@ export default function HomePage() {
   const [backendArchiveOps, setBackendArchiveOps] = useState<ArchiveOperation[]>([]);
   const [appVersion, setAppVersion] = useState<string>("");
 
-  // 获取应用版本号
-  useEffect(() => {
-    getAppVersion().then(setAppVersion).catch(console.error);
-  }, []);
-
   // 合并子文件夹模式：调用后端预览
   useEffect(() => {
     const targetPath = selectedFolder || folderPath;
@@ -151,11 +146,14 @@ export default function HomePage() {
       }
     }).catch(console.error);
 
-    // 检查更新
-    checkRemoteVersion().then((info) => {
-      if (info && appVersion && isNewVersion(appVersion, info.version)) {
-        setUpdateInfo(info);
-      }
+    // 检查更新（先获取版本号再检查）
+    getAppVersion().then((version) => {
+      setAppVersion(version);
+      checkRemoteVersion().then((info) => {
+        if (info && version && isNewVersion(version, info.version)) {
+          setUpdateInfo(info);
+        }
+      }).catch(console.error);
     }).catch(console.error);
   }, []);
 
