@@ -371,7 +371,7 @@ pub fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
         .map_err(|e| e.to_string())?;
     
     let resp = client.get(&url)
-        .header("User-Agent", "MediaNameFixer/0.1.6")
+        .header("User-Agent", "MediaNameFixer")
         .send()
         .map_err(|e| format!("网络请求失败: {}", e))?;
     
@@ -381,4 +381,9 @@ pub fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
     
     resp.json::<serde_json::Value>()
         .map_err(|e| format!("JSON 解析失败: {}", e))
+}
+
+#[tauri::command]
+pub fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
 }

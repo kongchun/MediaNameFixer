@@ -13,6 +13,7 @@ import {
   openFolder,
   openFile,
   openUrl,
+  getAppVersion,
 } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion, type VersionInfo } from "../api/update";
 import { useAppState } from "../store";
@@ -65,6 +66,12 @@ export default function HomePage() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const [backendArchiveOps, setBackendArchiveOps] = useState<ArchiveOperation[]>([]);
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  // 获取应用版本号
+  useEffect(() => {
+    getAppVersion().then(setAppVersion).catch(console.error);
+  }, []);
 
   // 合并子文件夹模式：调用后端预览
   useEffect(() => {
@@ -146,7 +153,7 @@ export default function HomePage() {
 
     // 检查更新
     checkRemoteVersion().then((info) => {
-      if (info && isNewVersion("0.1.6", info.version)) {
+      if (info && appVersion && isNewVersion(appVersion, info.version)) {
         setUpdateInfo(info);
       }
     }).catch(console.error);
@@ -861,7 +868,7 @@ export default function HomePage() {
           <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border">
             <h3 className="text-lg font-semibold mb-2">发现新版本</h3>
             <div className="text-sm text-muted-foreground space-y-1 mb-4">
-              <p>当前版本：0.1.6</p>
+              <p>当前版本：{appVersion}</p>
               <p>最新版本：{updateInfo.version}</p>
               {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
             </div>

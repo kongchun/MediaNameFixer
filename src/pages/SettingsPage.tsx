@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getConfig, setConfig, openUrl } from "../api/tauri";
+import { getConfig, setConfig, openUrl, getAppVersion } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion, type VersionInfo } from "../api/update";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,11 @@ export default function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "has-update" | "latest" | "error">("idle");
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
   const [updateError, setUpdateError] = useState<string>("");
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  useEffect(() => {
+    getAppVersion().then(setAppVersion).catch(console.error);
+  }, []);
 
   useEffect(() => {
     getConfig().then((c) => {
@@ -293,7 +298,7 @@ export default function SettingsPage() {
                   <h2 className="text-sm font-semibold">关于</h2>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-2">
-                      <span>版本：0.1.6</span>
+                      <span>版本：{appVersion}</span>
                       <Button
                         size="sm"
                         variant="outline"
@@ -303,7 +308,7 @@ export default function SettingsPage() {
                           setUpdateError("");
                           try {
                             const info = await checkRemoteVersion();
-                            if (info && isNewVersion("0.1.6", info.version)) {
+                            if (info && appVersion && isNewVersion(appVersion, info.version)) {
                               setUpdateInfo(info);
                               setUpdateStatus("has-update");
                             } else if (info) {

@@ -20,6 +20,9 @@ pub fn run() {
                 if let Some(icon) = app.default_window_icon().cloned() {
                     let _ = window.set_icon(icon);
                 }
+                // 窗口标题显示版本号
+                let version = env!("CARGO_PKG_VERSION");
+                let _ = window.set_title(&format!("MediaNameFixer v{}", version));
             }
             Ok(())
         })
@@ -41,6 +44,7 @@ pub fn run() {
             open_file,
             open_url,
             check_remote_version,
+            get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -103,3 +103,7 @@ export async function showMessage(msg: string, title?: string): Promise<void> {
 export async function checkRemoteVersion(url: string): Promise<any> {
   return invoke("check_remote_version", { url });
 }
+
+export async function getAppVersion(): Promise<string> {
+  return invoke("get_app_version");
+}
