@@ -290,7 +290,7 @@ export default function SettingsPage() {
                   <h2 className="text-sm font-semibold">关于</h2>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-2">
-                      <span>版本：0.1.4</span>
+                      <span>版本：0.1.5</span>
                       <Button
                         size="sm"
                         variant="outline"
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                         onClick={async () => {
                           setUpdateStatus("checking");
                           const info = await checkRemoteVersion();
-                          if (info && isNewVersion("0.1.4", info.version)) {
+                          if (info && isNewVersion("0.1.5", info.version)) {
                             setUpdateInfo(info);
                             setUpdateStatus("has-update");
                           } else if (info) {

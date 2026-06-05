@@ -128,7 +128,7 @@ export default function HomePage() {
 
     // 检查更新
     checkRemoteVersion().then((info) => {
-      if (info && isNewVersion("0.1.4", info.version)) {
+      if (info && isNewVersion("0.1.5", info.version)) {
         setUpdateInfo(info);
       }
     }).catch(console.error);
@@ -820,7 +820,7 @@ export default function HomePage() {
           <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border">
             <h3 className="text-lg font-semibold mb-2">发现新版本</h3>
             <div className="text-sm text-muted-foreground space-y-1 mb-4">
-              <p>当前版本：0.1.4</p>
+              <p>当前版本：0.1.5</p>
               <p>最新版本：{updateInfo.version}</p>
               {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
             </div>
