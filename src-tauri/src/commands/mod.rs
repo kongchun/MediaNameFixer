@@ -122,9 +122,41 @@ pub fn preview_rename(
 
 #[tauri::command]
 pub fn execute_rename(operations: Vec<RenameOperation>) -> Result<(), String> {
-    for op in operations {
+    if operations.is_empty() {
+        return Ok(());
+    }
+
+    let old_paths: std::collections::HashSet<String> =
+        operations.iter().map(|op| op.old_path.clone()).collect();
+
+    // 分离有冲突和无冲突的操作
+    // 冲突定义：某个操作的 new_path 等于另一个操作的 old_path
+    let (conflict_ops, direct_ops): (Vec<_>, Vec<_>) = operations
+        .into_iter()
+        .partition(|op| old_paths.contains(&op.new_path));
+
+    // 1. 无冲突的直接执行
+    for op in &direct_ops {
         std::fs::rename(&op.old_path, &op.new_path).map_err(|e| e.to_string())?;
     }
+
+    // 2. 有冲突的先走临时名（两阶段，避免覆盖）
+    if !conflict_ops.is_empty() {
+        let temp_suffix = format!(".tmp_rename_{}", std::process::id());
+
+        // 2a. 全部先改成临时名
+        for op in &conflict_ops {
+            let temp_path = op.old_path.clone() + &temp_suffix;
+            std::fs::rename(&op.old_path, &temp_path).map_err(|e| e.to_string())?;
+        }
+
+        // 2b. 再从临时名改到最终目标
+        for op in &conflict_ops {
+            let temp_path = op.old_path.clone() + &temp_suffix;
+            std::fs::rename(&temp_path, &op.new_path).map_err(|e| e.to_string())?;
+        }
+    }
+
     Ok(())
 }
 

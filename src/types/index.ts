@@ -46,6 +46,8 @@ export interface AppConfig {
   exif_provider: string;
   exiftool_path?: string;
   last_folder?: string;
+  last_selected_folder?: string;
+  expanded_paths?: string[];
   recent_folders: string[];
   favorite_folders: string[];
   time_tolerance_seconds?: number;

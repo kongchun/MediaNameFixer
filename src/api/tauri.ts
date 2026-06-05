@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, message } from "@tauri-apps/plugin-dialog";
 import {
   AppConfig,
   ArchiveMode,
@@ -94,4 +94,8 @@ export async function openFile(path: string): Promise<void> {
 
 export async function openUrl(url: string): Promise<void> {
   return invoke("open_url", { url });
+}
+
+export async function showMessage(msg: string, title?: string): Promise<void> {
+  await message(msg, { title: title || "提示", kind: "info" });
 }

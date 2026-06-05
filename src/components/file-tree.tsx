@@ -43,6 +43,7 @@ function TreeItem({
           isSelected && "bg-accent"
         )}
         style={{ paddingLeft: `${level * 14 + 4}px` }}
+        onDoubleClick={() => onExpand(node.path)}
       >
         <span
           className="mr-1 text-muted-foreground flex-shrink-0 w-4 h-4 flex items-center justify-center"
@@ -98,6 +99,8 @@ export function FileTree({
   recentPaths,
   favoriteFolders,
   onToggleFavorite,
+  expandedPaths,
+  onExpandedChange,
 }: {
   rootPath: string;
   selectedPath: string;
@@ -106,6 +109,8 @@ export function FileTree({
   recentPaths: string[];
   favoriteFolders: string[];
   onToggleFavorite?: (path: string) => void;
+  expandedPaths?: string[];
+  onExpandedChange?: (paths: string[]) => void;
 }) {
   const [quickAccess, setQuickAccess] = useState<QuickAccessItem[]>([]);
   const [root, setRoot] = useState<TreeNode | null>(null);
@@ -127,7 +132,7 @@ export function FileTree({
             path: d.path,
             children: [],
             isLoaded: false,
-            isExpanded: false,
+            isExpanded: expandedPaths?.includes(d.path) ?? false,
           })),
           isLoaded: true,
           isExpanded: true,
@@ -153,6 +158,7 @@ export function FileTree({
 
         const walk = (node: TreeNode): TreeNode => {
           if (node.path === path) {
+            const willExpand = !node.isExpanded;
             if (!node.isLoaded) {
               listDirectories(path).then((dirs) => {
                 const newChildren = dirs.map((d) => ({
@@ -160,7 +166,7 @@ export function FileTree({
                   path: d.path,
                   children: [],
                   isLoaded: false,
-                  isExpanded: false,
+                  isExpanded: expandedPaths?.includes(d.path) ?? false,
                 }));
                 setRoot((prev2) => {
                   if (!prev2) return prev2;
@@ -173,9 +179,26 @@ export function FileTree({
                   return walk2(prev2);
                 });
               });
+              // 通知外部展开变化
+              if (onExpandedChange) {
+                const next = expandedPaths ? [...expandedPaths] : [];
+                if (!next.includes(path)) next.push(path);
+                onExpandedChange(next);
+              }
               return { ...node, isExpanded: true };
             }
-            return { ...node, isExpanded: !node.isExpanded };
+            // 通知外部展开变化
+            if (onExpandedChange) {
+              const next = expandedPaths ? [...expandedPaths] : [];
+              if (willExpand) {
+                if (!next.includes(path)) next.push(path);
+              } else {
+                const idx = next.indexOf(path);
+                if (idx >= 0) next.splice(idx, 1);
+              }
+              onExpandedChange(next);
+            }
+            return { ...node, isExpanded: willExpand };
           }
           return { ...node, children: node.children.map(walk) };
         };
@@ -183,7 +206,7 @@ export function FileTree({
         return walk(prev);
       });
     },
-    [setRoot]
+    [setRoot, expandedPaths, onExpandedChange]
   );
 
   return (

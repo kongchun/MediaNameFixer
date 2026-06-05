@@ -24,6 +24,7 @@ import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, isO
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
+import { MessageModal } from "@/components/message-modal";
 import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
@@ -49,6 +50,7 @@ export default function HomePage() {
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("ByYear");
   const [selectedFolder, setSelectedFolder] = useState<string>("");
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [manualRenameMap, setManualRenameMap] = useState<Map<string, string>>(new Map());
@@ -56,6 +58,10 @@ export default function HomePage() {
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
+  const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
 
   const renameOps = useMemo(() => {
     if (activeTab !== "rename") return [];
@@ -66,6 +72,12 @@ export default function HomePage() {
     if (activeTab !== "archive") return [];
     return computeArchivePreview(files, archiveMode, new Set(files.map((f) => f.path)));
   }, [files, archiveMode, activeTab]);
+
+  function showModal(title: string, message: string) {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalOpen(true);
+  }
 
   function getFinalNewName(file: FileInfo): string | undefined {
     const manual = manualRenameMap.get(file.path);
@@ -100,8 +112,14 @@ export default function HomePage() {
       if (cfg.last_folder) {
         const p = cfg.last_folder;
         setFolderPath(p);
-        setSelectedFolder(p);
-        scanFiles(p).then((list) => {
+        // 恢复上次选中的子文件夹，没有则默认主文件夹
+        const selected = cfg.last_selected_folder || p;
+        setSelectedFolder(selected);
+        // 恢复展开状态
+        if (cfg.expanded_paths) {
+          setExpandedPaths(cfg.expanded_paths);
+        }
+        scanFiles(selected).then((list) => {
           setFiles(list);
           selectNeedRename(list);
         }).catch(console.error);
@@ -127,6 +145,7 @@ export default function HomePage() {
     if (p) {
       setFolderPath(p);
       setSelectedFolder(p);
+      setExpandedPaths([]);
       addRecentPath(p);
       addRecentFolder(p).catch(console.error);
       const list = await scanFiles(p);
@@ -142,6 +161,8 @@ export default function HomePage() {
     const list = await scanFiles(path);
     setFiles(list);
     selectNeedRename(list);
+    // 保存当前选中节点
+    setConfig({ ...config, last_selected_folder: path }).catch(console.error);
   }
 
   async function handleQuickAccessSelect(path: string) {
@@ -189,12 +210,57 @@ export default function HomePage() {
   }
 
   async function handlePreviewRename() {
-    // 预览已自动计算，点击后去掉无需改名的勾选（考虑时间容差）
+    // 智能选择：按格式+容差筛选，并扩展链式冲突
     const tolerance = config.time_tolerance_seconds ?? 2;
-    const needRenamePaths = renameOps
-      .filter((op) => !isWithinTimeTolerance(op.old_name, op.new_name, tolerance))
-      .map((op) => op.old_path);
-    updateSelectedPaths(needRenamePaths);
+    // 基于用户配置的日期格式生成标准文件名正则
+    let pattern = (config.date_format || "YYYY-MM-DD HHmmss")
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    pattern = pattern
+      .replace(/YYYY/g, "\\d{4}")
+      .replace(/MM/g, "\\d{2}")
+      .replace(/DD/g, "\\d{2}")
+      .replace(/HH/g, "\\d{2}")
+      .replace(/mm/g, "\\d{2}")
+      .replace(/ss/g, "\\d{2}");
+    const standardFormat = new RegExp(`^${pattern}(?:\\(\\d+\\))?$`);
+
+    // 第一步：按格式+容差判断初始是否需要改名
+    const needRenameSet = new Set<string>();
+    for (const op of renameOps) {
+      const baseName = op.old_name.includes(".")
+        ? op.old_name.slice(0, op.old_name.lastIndexOf("."))
+        : op.old_name;
+      const isStandard = standardFormat.test(baseName);
+      const withinTolerance = isWithinTimeTolerance(op.old_name, op.new_name, tolerance);
+      if (!isStandard || !withinTolerance) {
+        needRenameSet.add(op.old_path);
+      }
+    }
+
+    // 第二步：扩展链式冲突——链上所有文件都要勾选
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const op of renameOps) {
+        if (needRenameSet.has(op.old_path)) continue;
+
+        // 已勾选文件改名后会覆盖/用到当前文件 → 当前文件也需勾选
+        const coveredByNeeded = renameOps.some(
+          (n) => needRenameSet.has(n.old_path) && n.new_path === op.old_path
+        );
+        // 当前文件改名后会覆盖/用到已勾选文件 → 当前文件也需勾选
+        const coversNeeded = renameOps.some(
+          (n) => needRenameSet.has(n.old_path) && op.new_path === n.old_path
+        );
+
+        if (coveredByNeeded || coversNeeded) {
+          needRenameSet.add(op.old_path);
+          changed = true;
+        }
+      }
+    }
+
+    updateSelectedPaths(Array.from(needRenameSet));
   }
 
   async function handleExecuteRename() {
@@ -214,11 +280,35 @@ export default function HomePage() {
         return op;
       });
     if (opsToExecute.length === 0) return;
+
+    // 执行前冲突检测
+    const conflicts: string[] = [];
+    const newPathToOldName = new Map<string, string>();
+    for (const op of opsToExecute) {
+      if (newPathToOldName.has(op.new_path)) {
+        conflicts.push(`"${op.old_name}" 与 "${newPathToOldName.get(op.new_path)}" 目标文件名相同`);
+      } else {
+        newPathToOldName.set(op.new_path, op.old_name);
+      }
+    }
+    const unselectedFiles = files.filter((f) => !selectedPaths.has(f.path));
+    for (const op of opsToExecute) {
+      const unselected = unselectedFiles.find((f) => f.path === op.new_path);
+      if (unselected) {
+        conflicts.push(`"${op.old_name}" 将覆盖未勾选的文件 "${unselected.name}"`);
+      }
+    }
+    if (conflicts.length > 0) {
+      showModal("重命名冲突", "检测到以下冲突，请检查勾选状态或手动修改目标名：\n\n" + conflicts.join("\n"));
+      return;
+    }
+
     await executeRename(opsToExecute);
     setManualRenameMap(new Map());
     setManualTimeSourceMap(new Map());
     setEditingPath(null);
-    const list = await scanFiles(folderPath);
+    const target = selectedFolder || folderPath;
+    const list = await scanFiles(target);
     setFiles(list);
     updateSelectedPaths(list.map((f) => f.path));
   }
@@ -231,15 +321,22 @@ export default function HomePage() {
     const opsToExecute = archiveOps.filter((op) => selectedPaths.has(op.old_path));
     if (opsToExecute.length === 0) return;
     await executeArchive(opsToExecute);
-    const list = await scanFiles(folderPath);
+    const target = selectedFolder || folderPath;
+    const list = await scanFiles(target);
     setFiles(list);
     updateSelectedPaths(list.map((f) => f.path));
   }
 
   const filteredFiles = useMemo(() => {
-    if (mediaFilter === "all") return files;
-    return files.filter((f) => getFileCategory(f.ext) === mediaFilter);
-  }, [files, mediaFilter]);
+    let result = files;
+    if (mediaFilter !== "all") {
+      result = result.filter((f) => getFileCategory(f.ext) === mediaFilter);
+    }
+    if (showSelectedOnly) {
+      result = result.filter((f) => selectedPaths.has(f.path));
+    }
+    return result;
+  }, [files, mediaFilter, showSelectedOnly, selectedPaths]);
 
   const renameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -332,24 +429,10 @@ export default function HomePage() {
               <option value="ByDateTime">按时间日期</option>
               <option value="ByFileName">按文件名称</option>
             </select>
-            {renameMode === "ByDateTime" && (
-              <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none ml-1">
-                <input
-                  type="checkbox"
-                  checked={config.prefer_date_taken ?? false}
-                  onChange={async (e) => {
-                    const newCfg = { ...config, prefer_date_taken: e.target.checked };
-                    setGlobalConfig(newCfg);
-                    await setConfig(newCfg);
-                  }}
-                  className="rounded border-input"
-                />
-                优先拍摄时间
-              </label>
-            )}
+
             <Button size="sm" variant="secondary" onClick={handlePreviewRename} disabled={selectedPaths.size === 0}>
               <Eye size={14} className="mr-2" />
-              预览
+              智能选择
             </Button>
             <Button
               size="sm"
@@ -374,7 +457,7 @@ export default function HomePage() {
             </select>
             <Button size="sm" variant="secondary" onClick={handlePreviewArchive} disabled={selectedPaths.size === 0}>
               <Eye size={14} className="mr-2" />
-              预览
+              智能选择
             </Button>
             <Button
               size="sm"
@@ -407,6 +490,11 @@ export default function HomePage() {
               recentPaths={recentPaths}
               favoriteFolders={config.favorite_folders}
               onToggleFavorite={handleToggleFavorite}
+              expandedPaths={expandedPaths}
+              onExpandedChange={(paths) => {
+                setExpandedPaths(paths);
+                setConfig({ ...config, expanded_paths: paths }).catch(console.error);
+              }}
             />
           </ScrollArea>
         </div>
@@ -428,7 +516,7 @@ export default function HomePage() {
                 try {
                   await openFolder(target);
                 } catch (e) {
-                  alert("打开文件夹失败: " + e);
+                  showModal("错误", "打开文件夹失败: " + e);
                   console.error("打开文件夹失败:", e);
                 }
               }}
@@ -491,7 +579,27 @@ export default function HomePage() {
                       : "路径"}
                   </th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground w-36">
-                    拍摄时间
+                    <div className="flex items-center gap-1.5">
+                      {activeTab === "rename" && (
+                        <label
+                          className="flex items-center cursor-pointer select-none"
+                          title="优先使用拍摄时间命名"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={config.prefer_date_taken ?? false}
+                            onChange={async (e) => {
+                              const newCfg = { ...config, prefer_date_taken: e.target.checked };
+                              setGlobalConfig(newCfg);
+                              await setConfig(newCfg);
+                            }}
+                            className="rounded border-input"
+                          />
+                        </label>
+                      )}
+                      <span>拍摄时间</span>
+                    </div>
                   </th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground w-36">
                     修改时间
@@ -665,6 +773,15 @@ export default function HomePage() {
             <span className="text-xs text-muted-foreground mr-1">筛选:</span>
             <Button
               size="sm"
+              variant={showSelectedOnly ? "secondary" : "ghost"}
+              className="h-7 text-xs"
+              onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+            >
+              {showSelectedOnly ? "显示全部" : "仅显示已选"}
+            </Button>
+            <span className="w-px h-4 bg-border mx-1" />
+            <Button
+              size="sm"
               variant={mediaFilter === "all" ? "secondary" : "ghost"}
               className="h-7 text-xs"
               onClick={() => setMediaFilter("all")}
@@ -691,7 +808,7 @@ export default function HomePage() {
               视频
             </Button>
             <span className="text-xs text-muted-foreground ml-auto">
-              共 {files.length} 个文件
+              共 {files.length} 个文件，已选 {selectedPaths.size} 个
             </span>
           </div>
         </div>
@@ -718,6 +835,12 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      <MessageModal
+        open={modalOpen}
+        title={modalTitle}
+        message={modalMessage}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 }
