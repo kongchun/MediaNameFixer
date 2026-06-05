@@ -99,3 +99,7 @@ export async function openUrl(url: string): Promise<void> {
 export async function showMessage(msg: string, title?: string): Promise<void> {
   await message(msg, { title: title || "提示", kind: "info" });
 }
+
+export async function checkRemoteVersion(url: string): Promise<any> {
+  return invoke("check_remote_version", { url });
+}

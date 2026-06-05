@@ -1,34 +1,30 @@
+import { checkRemoteVersion as backendCheckVersion } from "./tauri";
+
 const UPDATE_URLS = [
-  "https://techwebplus.cn/medianamefixer/version.json"
-  //"http://10.67.11.158:8000/medianamefixer/version.json",
+  "https://techwebplus.cn/medianamefixer/version.json",
+  "http://10.67.11.158:8000/medianamefixer/version.json"
 ];
 
 export interface VersionInfo {
   version: string;
   downloadUrl: string;
-  "downloadUrl-local"?: string;
-  "downloadurl-github"?: string;
   releaseNotes?: string;
 }
 
-async function fetchVersion(url: string): Promise<VersionInfo | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, { cache: "no-cache", signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) return null;
-    const data: VersionInfo = await res.json();
-    return data;
-  } catch {
-    return null;
-  }
-}
-
 export async function checkRemoteVersion(): Promise<VersionInfo | null> {
-  // 同时请求多个地址，取第一个成功的
-  const results = await Promise.all(UPDATE_URLS.map(fetchVersion));
-  return results.find((r) => r !== null) || null;
+  for (const url of UPDATE_URLS) {
+    try {
+      const info = await backendCheckVersion(url);
+      return {
+        version: info.version,
+        downloadUrl: info.downloadUrl,
+        releaseNotes: info.releaseNotes,
+      };
+    } catch (e) {
+      console.error(`[update] check failed for ${url}:`, e);
+    }
+  }
+  return null;
 }
 
 export function isNewVersion(current: string, remote: string): boolean {

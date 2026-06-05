@@ -4,6 +4,7 @@ import {
   scanFiles,
   executeRename,
   executeArchive,
+  previewArchive,
   getConfig,
   setConfig,
   addRecentFolder,
@@ -19,6 +20,7 @@ import {
   FileInfo,
   RenameMode,
   ArchiveMode,
+  ArchiveOperation,
 } from "../types";
 import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, isOriginalEarlierThanNew } from "../utils/preview";
 import { Button } from "@/components/ui/button";
@@ -62,6 +64,19 @@ export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
+  const [backendArchiveOps, setBackendArchiveOps] = useState<ArchiveOperation[]>([]);
+
+  // 合并子文件夹模式：调用后端预览
+  useEffect(() => {
+    const targetPath = selectedFolder || folderPath;
+    if (activeTab === "archive" && archiveMode === "MergeSubfolders" && targetPath) {
+      previewArchive(targetPath, "MergeSubfolders")
+        .then(setBackendArchiveOps)
+        .catch(console.error);
+    } else {
+      setBackendArchiveOps([]);
+    }
+  }, [activeTab, archiveMode, folderPath, selectedFolder]);
 
   const renameOps = useMemo(() => {
     if (activeTab !== "rename") return [];
@@ -70,8 +85,11 @@ export default function HomePage() {
 
   const archiveOps = useMemo(() => {
     if (activeTab !== "archive") return [];
+    if (archiveMode === "MergeSubfolders") {
+      return backendArchiveOps;
+    }
     return computeArchivePreview(files, archiveMode, new Set(files.map((f) => f.path)));
-  }, [files, archiveMode, activeTab]);
+  }, [files, archiveMode, activeTab, backendArchiveOps]);
 
   function showModal(title: string, message: string) {
     setModalTitle(title);
@@ -195,6 +213,14 @@ export default function HomePage() {
     const list = await scanFiles(target);
     setFiles(list);
     selectNeedRename(list);
+  }
+
+  function formatSize(bytes: number): string {
+    if (bytes === 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const val = bytes / Math.pow(1024, i);
+    return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
   function handleToggleTimeSource(path: string, source: "taken" | "modified") {
@@ -324,7 +350,10 @@ export default function HomePage() {
   }
 
   async function handleExecuteArchive() {
-    const opsToExecute = archiveOps.filter((op) => selectedPaths.has(op.old_path));
+    // 合并子文件夹模式：直接执行全部操作（子文件夹中的文件不在 selectedPaths 中）
+    const opsToExecute = archiveMode === "MergeSubfolders"
+      ? archiveOps
+      : archiveOps.filter((op) => selectedPaths.has(op.old_path));
     if (opsToExecute.length === 0) return;
     await executeArchive(opsToExecute);
     const target = selectedFolder || folderPath;
@@ -438,7 +467,7 @@ export default function HomePage() {
 
             <Button size="sm" variant="secondary" onClick={handlePreviewRename} disabled={selectedPaths.size === 0}>
               <Eye size={14} className="mr-2" />
-              智能选择
+              智能分析
             </Button>
             <Button
               size="sm"
@@ -463,7 +492,7 @@ export default function HomePage() {
             </select>
             <Button size="sm" variant="secondary" onClick={handlePreviewArchive} disabled={selectedPaths.size === 0}>
               <Eye size={14} className="mr-2" />
-              智能选择
+              智能分析
             </Button>
             <Button
               size="sm"
@@ -610,13 +639,16 @@ export default function HomePage() {
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground w-36">
                     修改时间
                   </th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground w-24">
+                    大小
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredFiles.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       {folderPath ? "该文件夹下无文件" : "请从左侧选择文件夹"}
@@ -767,6 +799,9 @@ export default function HomePage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">
+                        {formatSize(file.size)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -834,11 +869,6 @@ export default function HomePage() {
               <Button variant="outline" size="sm" onClick={() => setUpdateInfo(null)}>
                 稍后提醒
               </Button>
-              {updateInfo["downloadurl-github"] && (
-                <Button variant="outline" size="sm" onClick={() => { openUrl(updateInfo["downloadurl-github"]!); setUpdateInfo(null); }}>
-                  GitHub 下载
-                </Button>
-              )}
               <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setUpdateInfo(null); }}>
                 立即更新
               </Button>

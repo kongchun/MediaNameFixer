@@ -40,6 +40,7 @@ pub fn run() {
             open_folder,
             open_file,
             open_url,
+            check_remote_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

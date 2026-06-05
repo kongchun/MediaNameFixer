@@ -1,7 +1,5 @@
 {
-  "version": "0.1.6",
-  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.6_x64-setup.exe",
-  "downloadUrl-local": "http://10.67.11.158:8000/medianamefixer/MediaNameFixer_0.1.6_x64-setup.exe",
-  "downloadurl-github": "https://github.com/kongchun/MediaNameFixer/releases/download/v0.1.6/MediaNameFixer_0.1.6_x64-setup.exe",
-  "releaseNotes": "1. 修复配置保存不生效问题（兼容旧版配置）\n2. 智能选择支持自定义重复后缀格式匹配\n3. 新旧文件名一致时自动取消勾选\n4. 设置菜单改名为命名格式\n5. 状态持久化与冲突检测优化"
+  "version": "0.1.7",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.7_x64-setup.exe",
+  "releaseNotes": "1. 检查更新改为后端请求，支持双地址检测\n2. 添加文件大小显示列\n3. 智能选择改名为智能分析\n4. 设置页面添加 GitHub 链接\n5. 合并子文件夹功能修复\n6. 界面细节优化"
 }

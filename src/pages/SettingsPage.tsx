@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "has-update" | "latest" | "error">("idle");
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
+  const [updateError, setUpdateError] = useState<string>("");
 
   useEffect(() => {
     getConfig().then((c) => {
@@ -55,7 +56,7 @@ export default function SettingsPage() {
 
   const menuItems: { key: MenuKey; label: string }[] = [
     { key: "general", label: "基本设置" },
-    { key: "format", label: "命名格式" },
+    { key: "format", label: "文件名格式" },
     { key: "about", label: "关于" },
   ];
 
@@ -299,13 +300,29 @@ export default function SettingsPage() {
                         disabled={updateStatus === "checking"}
                         onClick={async () => {
                           setUpdateStatus("checking");
-                          const info = await checkRemoteVersion();
-                          if (info && isNewVersion("0.1.6", info.version)) {
-                            setUpdateInfo(info);
-                            setUpdateStatus("has-update");
-                          } else if (info) {
-                            setUpdateStatus("latest");
-                          } else {
+                          setUpdateError("");
+                          try {
+                            const info = await checkRemoteVersion();
+                            if (info && isNewVersion("0.1.6", info.version)) {
+                              setUpdateInfo(info);
+                              setUpdateStatus("has-update");
+                            } else if (info) {
+                              setUpdateStatus("latest");
+                            } else {
+                              // 从控制台获取错误信息
+                              const logs: string[] = [];
+                              const originalError = console.error;
+                              console.error = (...args) => {
+                                logs.push(args.join(" "));
+                                originalError(...args);
+                              };
+                              await checkRemoteVersion();
+                              console.error = originalError;
+                              setUpdateError(logs.join("\n") || "无法连接到更新服务器");
+                              setUpdateStatus("error");
+                            }
+                          } catch (e) {
+                            setUpdateError(String(e));
                             setUpdateStatus("error");
                           }
                         }}
@@ -328,17 +345,6 @@ export default function SettingsPage() {
                           <p className="text-xs text-green-600">{updateInfo.releaseNotes}</p>
                         )}
                         <div className="flex gap-2 flex-wrap">
-                          {updateInfo["downloadurl-github"] && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-green-300 text-green-700 hover:bg-green-100"
-                              onClick={() => openUrl(updateInfo["downloadurl-github"]!)}
-                            >
-                              <ExternalLink size={14} className="mr-1" />
-                              GitHub 下载
-                            </Button>
-                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -357,7 +363,12 @@ export default function SettingsPage() {
                     )}
 
                     {updateStatus === "error" && (
-                      <p className="text-sm text-orange-600">检查失败，请检查网络连接</p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-orange-600">检查失败，请检查网络连接</p>
+                        {updateError && (
+                          <pre className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md overflow-auto whitespace-pre-wrap">{updateError}</pre>
+                        )}
+                      </div>
                     )}
 
                     <p>作者：天堂龙</p>
@@ -371,6 +382,17 @@ export default function SettingsPage() {
                         className="text-primary hover:underline"
                       >
                         https://techwebplus.cn/
+                      </a>
+                    </p>
+                    <p>
+                      GitHub：
+                      <a
+                        href="https://github.com/kongchun/MediaNameFixer"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        https://github.com/kongchun/MediaNameFixer
                       </a>
                     </p>
                   </div>

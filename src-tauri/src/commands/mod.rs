@@ -362,3 +362,23 @@ pub fn open_url(url: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    
+    let resp = client.get(&url)
+        .header("User-Agent", "MediaNameFixer/0.1.6")
+        .send()
+        .map_err(|e| format!("网络请求失败: {}", e))?;
+    
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}: {}", resp.status().as_u16(), url));
+    }
+    
+    resp.json::<serde_json::Value>()
+        .map_err(|e| format!("JSON 解析失败: {}", e))
+}
