@@ -1,6 +1,6 @@
 const UPDATE_URLS = [
-  "https://techwebplus.cn/medianamefixer/version.json",
-  "http://10.67.11.158:8000/medianamefixer/version.json",
+  "https://techwebplus.cn/medianamefixer/version.json"
+  //"http://10.67.11.158:8000/medianamefixer/version.json",
 ];
 
 export interface VersionInfo {
