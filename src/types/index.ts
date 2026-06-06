@@ -4,6 +4,7 @@ export interface FileInfo {
   size: number;
   ext: string;
   date_taken?: string;
+  date_taken_source?: string;
   date_created?: string;
   date_modified?: string;
 }
@@ -14,6 +15,7 @@ export interface RenameOperation {
   old_name: string;
   new_name: string;
   date_taken?: string;
+  date_taken_source?: string;
   date_created?: string;
   date_modified?: string;
   time_source?: string; // "exif" | "video" | "modified" | "created"

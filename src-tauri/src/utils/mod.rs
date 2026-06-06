@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
-use chrono::TimeZone;
 
 pub fn get_file_size(path: &Path) -> u64 {
     std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
@@ -38,6 +37,10 @@ pub fn get_mov_meta_creation_date(path: &Path) -> Option<String> {
     find_meta_creation_date(&mut file, file_len)
 }
 pub fn get_video_creation_time(path: &Path) -> Option<String> {
+    get_video_creation_time_with_source(path).map(|(dt, _)| dt)
+}
+
+pub fn get_video_creation_time_with_source(path: &Path) -> Option<(String, String)> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     if !matches!(ext.as_str(), "mp4" | "mov" | "m4v" | "3gp") {
         return None;
@@ -48,7 +51,7 @@ pub fn get_video_creation_time(path: &Path) -> Option<String> {
 
     // 优先读取 moov.meta.ilst 中的 com.apple.quicktime.creationdate
     if let Some(date) = find_meta_creation_date(&mut file, file_len) {
-        return Some(date);
+        return Some((date, "media".to_string()));
     }
 
     // Fallback: 读取 mvhd.creation_time
@@ -62,48 +65,9 @@ pub fn get_video_creation_time(path: &Path) -> Option<String> {
     let unix_time = creation_time - 2082844800;
     let dt = chrono::DateTime::from_timestamp(unix_time as i64, 0)?;
 
-    // 判断 mvhd.creation_time 存的是 UTC 还是本地时间
-    // MP4 规范中 mvhd.creation_time 通常存的是 UTC，直接 +8 转本地
-    // MOV 优先读 meta 里的本地时间，fallback 到 mvhd 时才做智能判断
-    let is_utc = if ext == "mp4" || ext == "m4v" || ext == "3gp" {
-        true
-    } else {
-        get_modified_time(path).map_or_else(
-            || {
-                // 无法获取修改时间，fallback：UTC 不在未来
-                let now_utc = chrono::Utc::now();
-                dt <= now_utc + chrono::Duration::hours(1)
-            },
-            |ms| {
-                chrono::NaiveDateTime::parse_from_str(&ms, "%Y-%m-%d %H:%M:%S")
-                    .ok()
-                    .and_then(|naive: chrono::NaiveDateTime| chrono::Local.from_local_datetime(&naive).single())
-                    .map_or(true, |m: chrono::DateTime<chrono::Local>| {
-                        let diff_hours = (m.timestamp() - dt.timestamp()).abs() / 3600;
-                        if diff_hours <= 2 {
-                            // creation_time 和修改时间接近 → 存的是本地时间
-                            false
-                        } else if diff_hours >= 6 && diff_hours <= 12 {
-                            // creation_time 比修改时间早约 8 小时 → 存的是 UTC
-                            true
-                        } else if diff_hours > 24 {
-                            // 文件被修改/传输过，默认按 UTC 处理（规范要求）
-                            true
-                        } else {
-                            // diff 在 2~6 小时之间，不确定，默认 UTC
-                            true
-                        }
-                    })
-            }
-        )
-    };
-
-    if is_utc {
-        let local_dt: chrono::DateTime<chrono::Local> = dt.into();
-        Some(local_dt.format("%Y-%m-%d %H:%M:%S").to_string())
-    } else {
-        Some(dt.format("%Y-%m-%d %H:%M:%S").to_string())
-    }
+    // 所有视频格式的 creation_time 默认视为 UTC，转本地时间
+    let local_dt: chrono::DateTime<chrono::Local> = dt.into();
+    Some((local_dt.format("%Y-%m-%d %H:%M:%S").to_string(), "mvhd".to_string()))
 }
 
 /// 在 moov.meta.ilst 中查找 com.apple.quicktime.creationdate
@@ -255,27 +219,40 @@ fn extract_data_atom_value(data: &[u8]) -> Option<String> {
 /// 将 ISO 8601 时间字符串解析为本地时间格式
 fn parse_iso8601_to_local(s: &str) -> Option<String> {
     // 尝试解析带时区偏移的格式: 2020-09-19T12:21:03+0800 或 2020-09-19T12:21:03+08:00
-    let re = regex::Regex::new(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([+-]\d{2}):?(\d{2})$").ok()?;
-    let caps = re.captures(s)?;
+    let re_tz = regex::Regex::new(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([+-]\d{2}):?(\d{2})$").ok()?;
+    if let Some(caps) = re_tz.captures(s) {
+        let year = caps[1].parse::<i32>().ok()?;
+        let month = caps[2].parse::<u32>().ok()?;
+        let day = caps[3].parse::<u32>().ok()?;
+        let hour = caps[4].parse::<u32>().ok()?;
+        let minute = caps[5].parse::<u32>().ok()?;
+        let second = caps[6].parse::<u32>().ok()?;
+        let tz_hour = caps[7].parse::<i32>().ok()?;
+        let tz_min = caps[8].parse::<i32>().ok()?;
 
+        // 构建 UTC 时间（先减去时区偏移）
+        let tz_offset_min = tz_hour * 60 + if tz_hour < 0 { -tz_min } else { tz_min };
+        let naive = chrono::NaiveDate::from_ymd_opt(year, month, day)?
+            .and_hms_opt(hour, minute, second)?;
+        let utc = naive - chrono::Duration::minutes(tz_offset_min as i64);
+
+        // 转换为本地时间
+        let local_dt: chrono::DateTime<chrono::Local> = chrono::DateTime::from_timestamp(utc.and_utc().timestamp(), 0)?.into();
+        return Some(local_dt.format("%Y-%m-%d %H:%M:%S").to_string());
+    }
+
+    // 不带时区偏移，直接视为本地时间
+    let re_no_tz = regex::Regex::new(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$").ok()?;
+    let caps = re_no_tz.captures(s)?;
     let year = caps[1].parse::<i32>().ok()?;
     let month = caps[2].parse::<u32>().ok()?;
     let day = caps[3].parse::<u32>().ok()?;
     let hour = caps[4].parse::<u32>().ok()?;
     let minute = caps[5].parse::<u32>().ok()?;
     let second = caps[6].parse::<u32>().ok()?;
-    let tz_hour = caps[7].parse::<i32>().ok()?;
-    let tz_min = caps[8].parse::<i32>().ok()?;
-
-    // 构建 UTC 时间（先减去时区偏移）
-    let tz_offset_min = tz_hour * 60 + if tz_hour < 0 { -tz_min } else { tz_min };
     let naive = chrono::NaiveDate::from_ymd_opt(year, month, day)?
         .and_hms_opt(hour, minute, second)?;
-    let utc = naive - chrono::Duration::minutes(tz_offset_min as i64);
-
-    // 转换为本地时间
-    let local_dt: chrono::DateTime<chrono::Local> = chrono::DateTime::from_timestamp(utc.and_utc().timestamp(), 0)?.into();
-    Some(local_dt.format("%Y-%m-%d %H:%M:%S").to_string())
+    Some(naive.format("%Y-%m-%d %H:%M:%S").to_string())
 }
 
 fn find_mvhd_creation_time(file: &mut File, file_len: u64) -> Option<u64> {

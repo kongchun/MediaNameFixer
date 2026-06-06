@@ -396,10 +396,11 @@ export default function HomePage() {
 
   // 预览后构建路径 -> 日期和时间来源的映射
   const previewDateMap = useMemo(() => {
-    const map = new Map<string, { date_taken?: string; date_created?: string; date_modified?: string; time_source?: string }>();
+    const map = new Map<string, { date_taken?: string; date_taken_source?: string; date_created?: string; date_modified?: string; time_source?: string }>();
     for (const op of renameOps) {
       map.set(op.old_path, {
         date_taken: op.date_taken,
+        date_taken_source: op.date_taken_source,
         date_created: op.date_created,
         date_modified: op.date_modified,
         time_source: op.time_source,
@@ -766,6 +767,50 @@ export default function HomePage() {
                         }`}
                       >
                         <div className="flex items-center gap-1">
+                          {(() => {
+                            const source = dateInfo?.date_taken_source || file.date_taken_source;
+                            if (source === "original") {
+                              return (
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-yellow-100 text-yellow-700 flex-shrink-0 cursor-help"
+                                  title="EXIF DateTimeOriginal：原始拍摄时间"
+                                >
+                                  E
+                                </span>
+                              );
+                            }
+                            if (source === "digitized") {
+                              return (
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-amber-100 text-amber-700 flex-shrink-0 cursor-help"
+                                  title="EXIF DateTimeDigitized：数字化时间"
+                                >
+                                  D
+                                </span>
+                              );
+                            }
+                            if (source === "media") {
+                              return (
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-orange-100 text-orange-700 flex-shrink-0 cursor-help"
+                                  title="Media Create Date：视频拍摄时间"
+                                >
+                                  M
+                                </span>
+                              );
+                            }
+                            if (source === "mvhd") {
+                              return (
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-indigo-100 text-indigo-700 flex-shrink-0 cursor-help"
+                                  title="QuickTime Movie Header：视频创建时间"
+                                >
+                                  M
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                           <span className="flex-1">{dateInfo?.date_taken || file.date_taken || "-"}</span>
                           {activeTab === "rename" && (dateInfo?.date_taken || file.date_taken) && (
                             <button

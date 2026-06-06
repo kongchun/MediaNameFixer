@@ -1,6 +1,6 @@
 use crate::core::exif::ExifProvider;
 use crate::models::{RenameMode, RenameOperation};
-use crate::utils::{get_creation_time, get_modified_time, is_media_file, get_video_creation_time, get_mov_meta_creation_date};
+use crate::utils::{get_creation_time, get_modified_time, is_media_file, get_video_creation_time, get_video_creation_time_with_source, get_mov_meta_creation_date};
 use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -45,9 +45,11 @@ impl<'a> RenameEngine<'a> {
             let old_name = entry.file_name().unwrap_or_default().to_string_lossy().to_string();
 
             // 读取拍摄时间（EXIF 或视频 QuickTime 时间）
-            let date_taken = self.exif_provider.read_date_taken(&entry)
-                .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
-                .or_else(|| get_video_creation_time(&entry));
+            let date_taken_result = self.exif_provider.read_date_taken_with_source(&entry)
+                .map(|(dt, source)| (dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
+                .or_else(|| get_video_creation_time_with_source(&entry));
+            let date_taken = date_taken_result.as_ref().map(|(dt, _)| dt.clone());
+            let date_taken_source = date_taken_result.as_ref().map(|(_, source)| source.clone());
             let date_modified = get_modified_time(&entry);
             // MOV 文件使用 moov.meta.ilst.creationdate 作为创建时间
             let date_created = if ext.to_lowercase() == "mov" {
@@ -75,6 +77,7 @@ impl<'a> RenameEngine<'a> {
                     old_name,
                     new_name: unique_name,
                     date_taken,
+                    date_taken_source,
                     date_created,
                     date_modified,
                     time_source: time_source.map(|s| s.to_string()),

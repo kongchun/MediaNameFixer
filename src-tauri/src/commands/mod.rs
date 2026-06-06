@@ -7,7 +7,7 @@ use crate::core::renamer::RenameEngine;
 use crate::models::{
     AppConfig, ArchiveOperation, ArchiveParams, DirEntry, FileInfo, QuickAccessItem, RenameOperation, RenameParams,
 };
-use crate::utils::{get_file_size, get_modified_time, get_creation_time, is_media_file, get_video_creation_time, get_mov_meta_creation_date};
+use crate::utils::{get_file_size, get_modified_time, get_creation_time, is_media_file, get_video_creation_time_with_source, get_mov_meta_creation_date};
 use std::path::Path;
 use tauri::State;
 
@@ -36,9 +36,11 @@ pub fn scan_files(folder_path: String) -> Vec<FileInfo> {
             if !is_media_file(&ext) {
                 continue;
             }
-            let date_taken = exif_provider.read_date_taken(&p)
-                .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
-                .or_else(|| get_video_creation_time(&p));
+            let date_taken = exif_provider.read_date_taken_with_source(&p)
+                .map(|(dt, source)| (dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
+                .or_else(|| get_video_creation_time_with_source(&p));
+            let date_taken_value = date_taken.as_ref().map(|(dt, _)| dt.clone());
+            let date_taken_source = date_taken.as_ref().map(|(_, source)| source.clone());
             // MOV 文件使用 moov.meta.ilst.creationdate 作为创建时间
             let date_created = if ext.to_lowercase() == "mov" {
                 get_mov_meta_creation_date(&p).or_else(|| get_creation_time(&p))
@@ -51,7 +53,8 @@ pub fn scan_files(folder_path: String) -> Vec<FileInfo> {
                 ext: ext.clone(),
                 date_created,
                 date_modified: get_modified_time(&p),
-                date_taken,
+                date_taken: date_taken_value,
+                date_taken_source,
                 name,
             });
         }

@@ -7,6 +7,9 @@ pub mod kamadak_provider;
 
 pub trait ExifProvider: Send + Sync {
     fn read_date_taken(&self, path: &Path) -> Option<NaiveDateTime>;
+    fn read_date_taken_with_source(&self, path: &Path) -> Option<(NaiveDateTime, String)> {
+        self.read_date_taken(path).map(|dt| (dt, "exif".to_string()))
+    }
 }
 
 pub fn create_provider(provider_name: &str, exiftool_path: Option<&str>) -> Arc<dyn ExifProvider> {

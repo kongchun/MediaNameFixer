@@ -7,6 +7,7 @@ pub struct FileInfo {
     pub size: u64,
     pub ext: String,
     pub date_taken: Option<String>,
+    pub date_taken_source: Option<String>,
     pub date_created: Option<String>,
     pub date_modified: Option<String>,
 }
@@ -18,6 +19,7 @@ pub struct RenameOperation {
     pub old_name: String,
     pub new_name: String,
     pub date_taken: Option<String>,
+    pub date_taken_source: Option<String>,
     pub date_created: Option<String>,
     pub date_modified: Option<String>,
     pub time_source: Option<String>, // "exif" | "video" | "modified" | "created"

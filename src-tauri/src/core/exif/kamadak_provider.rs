@@ -30,6 +30,29 @@ impl ExifProvider for KamadakExifProvider {
         }
         None
     }
+
+    fn read_date_taken_with_source(&self, path: &Path) -> Option<(NaiveDateTime, String)> {
+        let file = File::open(path).ok()?;
+        let mut bufreader = BufReader::new(&file);
+        let exifreader = Reader::new();
+        let exif = exifreader.read_from_container(&mut bufreader).ok()?;
+
+        let tag_sources = [
+            (Tag::DateTimeOriginal, "original"),
+            (Tag::DateTimeDigitized, "digitized"),
+            (Tag::DateTime, "datetime"),
+        ];
+        for (tag, source) in tag_sources {
+            for field in exif.fields() {
+                if field.tag == tag {
+                    if let Some(dt) = parse_exif_date(&field.value) {
+                        return Some((dt, source.to_string()));
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 fn parse_exif_date(value: &Value) -> Option<NaiveDateTime> {

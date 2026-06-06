@@ -1,5 +1,5 @@
 {
-  "version": "0.1.7",
-  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.7_x64-setup.exe",
-  "releaseNotes": "1. 检查更新改为后端请求，支持双地址检测\n2. 添加文件大小显示列\n3. 智能选择改名为智能分析\n4. 设置页面添加 GitHub 链接\n5. 合并子文件夹功能修复\n6. 界面细节优化"
+  "version": "0.1.8",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.8_x64-setup.exe",
+  "releaseNotes": "1. 拍摄时间来源图标显示（E/D/M）\n2. 视频拍摄时间解析优化（时区修复、Media Create Date 识别）\n3. 窗口标题栏动态显示版本号\n4. 版本号集中管理（Cargo.toml 单点维护）\n5. 启动时自动检查更新修复"
 }
