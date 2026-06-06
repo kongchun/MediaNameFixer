@@ -17,10 +17,12 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[tauri::command]
-pub fn scan_files(folder_path: String) -> Vec<FileInfo> {
+pub fn scan_files(folder_path: String, config_manager: State<'_, ConfigManager>) -> Vec<FileInfo> {
     let path = Path::new(&folder_path);
     let mut result = Vec::new();
     let exif_provider = KamadakExifProvider::new();
+    let cfg = config_manager.get();
+    let old_3gp_utc = cfg.old_3gp_utc;
     if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.flatten() {
             let p = entry.path();
@@ -36,9 +38,11 @@ pub fn scan_files(folder_path: String) -> Vec<FileInfo> {
             if !is_media_file(&ext) {
                 continue;
             }
-            let date_taken = exif_provider.read_date_taken_with_source(&p)
-                .map(|(dt, source)| (dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
-                .or_else(|| get_video_creation_time_with_source(&p));
+            let date_taken = if let Some((dt, source)) = exif_provider.read_date_taken_with_source(&p) {
+                Some((dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
+            } else {
+                get_video_creation_time_with_source(&p, old_3gp_utc)
+            };
             let date_taken_value = date_taken.as_ref().map(|(dt, _)| dt.clone());
             let date_taken_source = date_taken.as_ref().map(|(_, source)| source.clone());
             // MOV 文件使用 moov.meta.ilst.creationdate 作为创建时间
@@ -119,7 +123,7 @@ pub fn preview_rename(
 ) -> Vec<RenameOperation> {
     let cfg = config_manager.get();
     let provider = create_provider(&cfg.exif_provider, cfg.exiftool_path.as_deref());
-    let engine = RenameEngine::new(provider.as_ref());
+    let engine = RenameEngine::new(provider.as_ref(), cfg.old_3gp_utc);
     engine.preview(&params.folder_path, &params.mode, params.recursive, params.selected_paths.as_ref())
 }
 

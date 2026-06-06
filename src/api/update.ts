@@ -12,9 +12,10 @@ export interface VersionInfo {
 }
 
 export async function checkRemoteVersion(): Promise<VersionInfo | null> {
+  const cacheBuster = Date.now();
   for (const url of UPDATE_URLS) {
     try {
-      const info = await backendCheckVersion(url);
+      const info = await backendCheckVersion(`${url}?t=${cacheBuster}`);
       return {
         version: info.version,
         downloadUrl: info.downloadUrl,

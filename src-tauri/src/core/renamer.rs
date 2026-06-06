@@ -7,11 +7,12 @@ use std::path::{Path, PathBuf};
 
 pub struct RenameEngine<'a> {
     exif_provider: &'a dyn ExifProvider,
+    old_3gp_utc: bool,
 }
 
 impl<'a> RenameEngine<'a> {
-    pub fn new(exif_provider: &'a dyn ExifProvider) -> Self {
-        Self { exif_provider }
+    pub fn new(exif_provider: &'a dyn ExifProvider, old_3gp_utc: bool) -> Self {
+        Self { exif_provider, old_3gp_utc }
     }
 
     pub fn preview(
@@ -45,9 +46,11 @@ impl<'a> RenameEngine<'a> {
             let old_name = entry.file_name().unwrap_or_default().to_string_lossy().to_string();
 
             // 读取拍摄时间（EXIF 或视频 QuickTime 时间）
-            let date_taken_result = self.exif_provider.read_date_taken_with_source(&entry)
-                .map(|(dt, source)| (dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
-                .or_else(|| get_video_creation_time_with_source(&entry));
+            let date_taken_result = if let Some((dt, source)) = self.exif_provider.read_date_taken_with_source(&entry) {
+                Some((dt.format("%Y-%m-%d %H:%M:%S").to_string(), source))
+            } else {
+                get_video_creation_time_with_source(&entry, self.old_3gp_utc)
+            };
             let date_taken = date_taken_result.as_ref().map(|(dt, _)| dt.clone());
             let date_taken_source = date_taken_result.as_ref().map(|(_, source)| source.clone());
             let date_modified = get_modified_time(&entry);
@@ -99,7 +102,7 @@ impl<'a> RenameEngine<'a> {
     ) -> (Option<String>, Option<&str>) {
         let taken_dt = self.exif_provider.read_date_taken(path)
             .or_else(|| {
-                get_video_creation_time(path).and_then(|s| {
+                get_video_creation_time(path, self.old_3gp_utc).and_then(|s| {
                     chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").ok()
                 })
             });
@@ -135,7 +138,7 @@ impl<'a> RenameEngine<'a> {
 
         match (earliest, source) {
             (Some(dt), Some(src)) => {
-                let final_source = if get_video_creation_time(path).is_some() && src == "exif" {
+                let final_source = if get_video_creation_time(path, self.old_3gp_utc).is_some() && src == "exif" {
                     "video"
                 } else {
                     src

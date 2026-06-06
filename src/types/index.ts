@@ -56,6 +56,7 @@ export interface AppConfig {
   prefer_date_taken?: boolean;
   date_format?: string;
   duplicate_suffix?: string;
+  old_3gp_utc?: boolean;
 }
 
 export type Tab = "rename" | "archive" | "settings";

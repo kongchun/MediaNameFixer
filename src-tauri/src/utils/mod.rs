@@ -2,6 +2,24 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
+/// 读取文件 ftyp atom 中的 major_brand
+fn get_major_brand(path: &Path) -> Option<String> {
+    let mut file = File::open(path).ok()?;
+    let mut buf = [0u8; 12];
+    file.read_exact(&mut buf).ok()?;
+    if &buf[4..8] == b"ftyp" {
+        Some(String::from_utf8_lossy(&buf[8..12]).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// 判断是否为旧 3GP 文件（3gp4/3gp5/3gp6/3gp7）
+fn is_old_3gp(path: &Path) -> bool {
+    get_major_brand(path)
+        .map_or(false, |brand| matches!(brand.as_str(), "3gp4" | "3gp5" | "3gp6" | "3gp7"))
+}
+
 pub fn get_file_size(path: &Path) -> u64 {
     std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
 }
@@ -36,11 +54,11 @@ pub fn get_mov_meta_creation_date(path: &Path) -> Option<String> {
     let file_len = file.metadata().ok()?.len();
     find_meta_creation_date(&mut file, file_len)
 }
-pub fn get_video_creation_time(path: &Path) -> Option<String> {
-    get_video_creation_time_with_source(path).map(|(dt, _)| dt)
+pub fn get_video_creation_time(path: &Path, treat_as_utc: bool) -> Option<String> {
+    get_video_creation_time_with_source(path, treat_as_utc).map(|(dt, _)| dt)
 }
 
-pub fn get_video_creation_time_with_source(path: &Path) -> Option<(String, String)> {
+pub fn get_video_creation_time_with_source(path: &Path, treat_old_3gp_as_utc: bool) -> Option<(String, String)> {
     let ext = path.extension()?.to_str()?.to_lowercase();
     if !matches!(ext.as_str(), "mp4" | "mov" | "m4v" | "3gp") {
         return None;
@@ -65,9 +83,20 @@ pub fn get_video_creation_time_with_source(path: &Path) -> Option<(String, Strin
     let unix_time = creation_time - 2082844800;
     let dt = chrono::DateTime::from_timestamp(unix_time as i64, 0)?;
 
-    // 所有视频格式的 creation_time 默认视为 UTC，转本地时间
-    let local_dt: chrono::DateTime<chrono::Local> = dt.into();
-    Some((local_dt.format("%Y-%m-%d %H:%M:%S").to_string(), "mvhd".to_string()))
+    // 判断是否为旧 3GP 文件
+    let is_old = is_old_3gp(path);
+
+    // 旧 3GP 根据用户设置决定是否转 UTC；MP4/MOV/M4V 始终转 UTC
+    let should_convert_utc = if is_old { treat_old_3gp_as_utc } else { true };
+
+    if should_convert_utc {
+        let local_dt: chrono::DateTime<chrono::Local> = dt.into();
+        Some((local_dt.format("%Y-%m-%d %H:%M:%S").to_string(), "mvhd".to_string()))
+    } else {
+        let dt = chrono::DateTime::from_timestamp(unix_time as i64, 0)?;
+        let naive = dt.naive_utc();
+        Some((naive.format("%Y-%m-%d %H:%M:%S").to_string(), "3gp".to_string()))
+    }
 }
 
 /// 在 moov.meta.ilst 中查找 com.apple.quicktime.creationdate

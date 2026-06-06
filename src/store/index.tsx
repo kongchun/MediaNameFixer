@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { AppConfig, Tab } from "../types";
+import { type VersionInfo } from "../api/update";
 
 interface AppState {
   folderPath: string;
@@ -8,6 +9,8 @@ interface AppState {
   setActiveTab: (v: Tab) => void;
   config: AppConfig;
   setConfig: (v: AppConfig) => void;
+  updateInfo: VersionInfo | null;
+  setUpdateInfo: (v: VersionInfo | null) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -26,10 +29,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     date_format: "YYYY-MM-DD HHmmss",
     duplicate_suffix: "(c)",
   });
+  const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 
   return (
     <AppContext.Provider
-      value={{ folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig }}
+      value={{ folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig, updateInfo, setUpdateInfo }}
     >
       {children}
     </AppContext.Provider>

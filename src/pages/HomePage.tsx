@@ -15,7 +15,7 @@ import {
   openUrl,
   getAppVersion,
 } from "../api/tauri";
-import { checkRemoteVersion, isNewVersion, type VersionInfo } from "../api/update";
+import { checkRemoteVersion, isNewVersion } from "../api/update";
 import { useAppState } from "../store";
 import {
   FileInfo,
@@ -47,7 +47,7 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
 }
 
 export default function HomePage() {
-  const { folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig: setGlobalConfig } = useAppState();
+  const { folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig: setGlobalConfig, updateInfo, setUpdateInfo } = useAppState();
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [renameMode, setRenameMode] = useState<RenameMode>("ByDateTime");
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("ByYear");
@@ -60,7 +60,7 @@ export default function HomePage() {
   const [manualTimeSourceMap, setManualTimeSourceMap] = useState<Map<string, "taken" | "modified">>(new Map());
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
-  const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -146,14 +146,16 @@ export default function HomePage() {
       }
     }).catch(console.error);
 
-    // 检查更新（先获取版本号再检查）
+    // 检查更新（静默检测，不弹窗）
     getAppVersion().then((version) => {
       setAppVersion(version);
       checkRemoteVersion().then((info) => {
         if (info && version && isNewVersion(version, info.version)) {
           setUpdateInfo(info);
+        } else {
+          setUpdateInfo(null);
         }
-      }).catch(console.error);
+      }).catch(() => setUpdateInfo(null));
     }).catch(console.error);
   }, []);
 
@@ -538,6 +540,21 @@ export default function HomePage() {
               }}
             />
           </ScrollArea>
+          {updateInfo && (
+            <div className="p-3 border-t">
+              <button
+                onClick={() => setShowUpdateDialog(true)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg cursor-pointer transition-colors shadow-sm"
+                title="发现新版本，点击查看详情"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                </span>
+                发现新版本 v{updateInfo.version}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 右侧：路径/刷新 + 表格 + 筛选 */}
@@ -773,7 +790,7 @@ export default function HomePage() {
                               return (
                                 <span
                                   className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-yellow-100 text-yellow-700 flex-shrink-0 cursor-help"
-                                  title="EXIF DateTimeOriginal：原始拍摄时间"
+                                  title="EXIF 原始拍摄时间"
                                 >
                                   E
                                 </span>
@@ -783,7 +800,7 @@ export default function HomePage() {
                               return (
                                 <span
                                   className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-amber-100 text-amber-700 flex-shrink-0 cursor-help"
-                                  title="EXIF DateTimeDigitized：数字化时间"
+                                  title="EXIF 数字化时间"
                                 >
                                   D
                                 </span>
@@ -793,7 +810,7 @@ export default function HomePage() {
                               return (
                                 <span
                                   className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-orange-100 text-orange-700 flex-shrink-0 cursor-help"
-                                  title="Media Create Date：视频拍摄时间"
+                                  title="Apple 媒体创建时间"
                                 >
                                   M
                                 </span>
@@ -803,9 +820,19 @@ export default function HomePage() {
                               return (
                                 <span
                                   className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-indigo-100 text-indigo-700 flex-shrink-0 cursor-help"
-                                  title="QuickTime Movie Header：视频创建时间"
+                                  title="QuickTime 创建时间"
                                 >
                                   M
+                                </span>
+                              );
+                            }
+                            if (source === "3gp") {
+                              return (
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm bg-teal-100 text-teal-700 flex-shrink-0 cursor-help"
+                                  title="3GP 本地时间"
+                                >
+                                  G
                                 </span>
                               );
                             }
@@ -906,21 +933,40 @@ export default function HomePage() {
       </div>
 
       {/* 更新提示对话框 */}
-      {updateInfo && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border">
-            <h3 className="text-lg font-semibold mb-2">发现新版本</h3>
-            <div className="text-sm text-muted-foreground space-y-1 mb-4">
-              <p>当前版本：{appVersion}</p>
-              <p>最新版本：{updateInfo.version}</p>
-              {updateInfo.releaseNotes && <p>{updateInfo.releaseNotes}</p>}
+      {showUpdateDialog && updateInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowUpdateDialog(false)}>
+          <div className="bg-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg border" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <span className="text-red-600 text-lg font-bold">!</span>
+              </div>
+              <h3 className="text-lg font-semibold">发现新版本</h3>
+            </div>
+            <div className="text-sm text-muted-foreground space-y-2 mb-5">
+              <div className="flex justify-between border-b pb-2">
+                <span>当前版本</span>
+                <span className="font-mono text-foreground">v{appVersion}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span>最新版本</span>
+                <span className="font-mono text-green-600 font-semibold">v{updateInfo.version}</span>
+              </div>
+              {updateInfo.releaseNotes && (
+                <div className="pt-1">
+                  <p className="text-xs font-medium text-foreground mb-1">更新内容：</p>
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2 whitespace-pre-line leading-relaxed">
+                    {updateInfo.releaseNotes}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setUpdateInfo(null)}>
+              <Button variant="outline" size="sm" onClick={() => setShowUpdateDialog(false)}>
                 稍后提醒
               </Button>
-              <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setUpdateInfo(null); }}>
-                立即更新
+              <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setShowUpdateDialog(false); }}>
+                <ExternalLink size={14} className="mr-1.5" />
+                立即下载
               </Button>
             </div>
           </div>
