@@ -1,0 +1,5 @@
+{
+  "version": "0.1.9",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.9_x64-setup.exe",
+  "releaseNotes": "1. 启动时自动检查更新优化\n2. 拍摄时间来源图标显示（E=EXIF原始拍摄时间、D=EXIF数字化时间、M=Apple媒体创建时间/QuickTime创建时间、G=旧3GP本地时间）\n3. 视频拍摄时间解析优化\n4. 3GP利旧模式\n5. 新增文件名时间对比符号列（=、≈、>、<），直观展示原文件名与新文件名时间关系\n6. 新增设置项：原文件名时间更早时可跳过不推荐修改"
+}
