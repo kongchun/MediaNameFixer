@@ -48,20 +48,21 @@ export function isWithinTimeTolerance(oldName: string, newName: string, toleranc
   return diff <= toleranceSeconds;
 }
 
-export function isOriginalEarlierThanNew(oldName: string, newName: string, toleranceSeconds: number): boolean {
-  if (toleranceSeconds <= 0) return false;
+export function compareFileTime(oldName: string, newName: string, toleranceSeconds: number): "=" | "≈" | ">" | "<" | "" {
+  if (toleranceSeconds <= 0) return oldName === newName ? "=" : "";
 
-  // 只有原文件名前几位满足 YYYY-MM-DD HHMMSS 格式时，才比较
   const hasDateTimePrefix = /^\d{4}-\d{2}-\d{2} \d{6}/.test(oldName);
-  if (!hasDateTimePrefix) return false;
+  if (!hasDateTimePrefix) return "";
 
   const oldDt = extractDateTimeFromName(oldName);
   const newDt = extractDateTimeFromName(newName);
-  if (!oldDt || !newDt) return false;
+  if (!oldDt || !newDt) return "";
 
   const diff = (newDt.getTime() - oldDt.getTime()) / 1000;
-  // 原文件名时间早于新文件名时间，且差值超过容差
-  return diff > toleranceSeconds;
+  if (diff === 0) return "=";
+  if (Math.abs(diff) <= toleranceSeconds) return "≈";
+  if (diff > toleranceSeconds) return "<";
+  return ">";
 }
 
 function makeUniqueName(name: string, ext: string, used: Set<string>, suffixFormat: string): string {

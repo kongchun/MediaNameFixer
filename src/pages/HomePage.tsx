@@ -23,7 +23,7 @@ import {
   ArchiveMode,
   ArchiveOperation,
 } from "../types";
-import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, isOriginalEarlierThanNew } from "../utils/preview";
+import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, compareFileTime } from "../utils/preview";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
@@ -271,7 +271,15 @@ export default function HomePage() {
         : op.old_name;
       const isStandard = standardFormat.test(baseName);
       const withinTolerance = isWithinTimeTolerance(op.old_name, op.new_name, tolerance);
-      if (!isStandard || !withinTolerance) {
+      if (!isStandard) {
+        // 格式不规范，始终需要改名
+        needRenameSet.add(op.old_path);
+      } else if (!withinTolerance) {
+        // 格式规范但时间差超过容差
+        // 如果设置了跳过原时间早于新时间的文件，则排除
+        if (config.select_earlier !== false && compareFileTime(op.old_name, op.new_name, tolerance) === "<") {
+          continue;
+        }
         needRenameSet.add(op.old_path);
       }
     }
@@ -303,8 +311,10 @@ export default function HomePage() {
   }
 
   async function handleExecuteRename() {
+    // 若处于筛选模式，只处理当前可见的文件
+    const visiblePaths = new Set(filteredFiles.map((f) => f.path));
     const opsToExecute = renameOps
-      .filter((op) => selectedPaths.has(op.old_path))
+      .filter((op) => selectedPaths.has(op.old_path) && visiblePaths.has(op.old_path))
       .map((op) => {
         const manualName = manualRenameMap.get(op.old_path);
         if (manualName !== undefined && manualName !== op.new_name) {
@@ -343,6 +353,7 @@ export default function HomePage() {
     }
 
     await executeRename(opsToExecute);
+    showModal("重命名完成", `已成功重命名 ${opsToExecute.length} 个文件`);
     setManualRenameMap(new Map());
     setManualTimeSourceMap(new Map());
     setEditingPath(null);
@@ -357,12 +368,14 @@ export default function HomePage() {
   }
 
   async function handleExecuteArchive() {
-    // 合并子文件夹模式：直接执行全部操作（子文件夹中的文件不在 selectedPaths 中）
+    // 若处于筛选模式，只处理当前可见的文件
+    const visiblePaths = new Set(filteredFiles.map((f) => f.path));
     const opsToExecute = archiveMode === "MergeSubfolders"
       ? archiveOps
-      : archiveOps.filter((op) => selectedPaths.has(op.old_path));
+      : archiveOps.filter((op) => selectedPaths.has(op.old_path) && visiblePaths.has(op.old_path));
     if (opsToExecute.length === 0) return;
     await executeArchive(opsToExecute);
+    showModal("归档完成", `已成功归档 ${opsToExecute.length} 个文件`);
     const target = selectedFolder || folderPath;
     const list = await scanFiles(target);
     setFiles(list);
@@ -629,6 +642,11 @@ export default function HomePage() {
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
                     {activeTab === "rename" ? "原文件名" : "文件名"}
                   </th>
+                  {activeTab === "rename" && (
+                    <th className="w-10 px-2 py-2 text-center font-medium text-foreground">
+                      
+                    </th>
+                  )}
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
                     {activeTab === "rename"
                       ? "新文件名"
@@ -671,7 +689,7 @@ export default function HomePage() {
                 {filteredFiles.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={activeTab === "rename" ? 7 : 6}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       {folderPath ? "该文件夹下无文件" : "请从左侧选择文件夹"}
@@ -692,7 +710,7 @@ export default function HomePage() {
                           onChange={() => toggleSelectFile(file.path)}
                         />
                       </td>
-                      <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && isOriginalEarlierThanNew(file.name, finalNewName, config.time_tolerance_seconds ?? 2) ? "text-red-600" : ""}`}>
+                      <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && compareFileTime(file.name, finalNewName, config.time_tolerance_seconds ?? 2) === "<" ? "text-orange-500" : ""}`}>
                         <div className="flex items-center gap-1">
                           <span className="flex-1">{file.name}</span>
                           <button
@@ -707,6 +725,14 @@ export default function HomePage() {
                           </button>
                         </div>
                       </td>
+                      {activeTab === "rename" && finalNewName && (
+                        <td className={`px-2 py-2 text-center font-mono ${compareFileTime(file.name, finalNewName, config.time_tolerance_seconds ?? 2) === "<" ? "text-orange-500" : "text-muted-foreground"}`}>
+                          {compareFileTime(file.name, finalNewName, config.time_tolerance_seconds ?? 2)}
+                        </td>
+                      )}
+                      {activeTab === "rename" && !finalNewName && (
+                        <td className="px-2 py-2 text-center text-muted-foreground font-mono">-</td>
+                      )}
                       <td className="px-4 py-2">
                         {activeTab === "rename" && finalNewName ? (
                           editingPath === file.path ? (

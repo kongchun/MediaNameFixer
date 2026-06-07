@@ -87,6 +87,7 @@ pub struct AppConfig {
     pub date_format: String,
     pub duplicate_suffix: String,
     pub old_3gp_utc: bool,
+    pub select_earlier: bool,
 }
 
 impl Default for AppConfig {
@@ -104,6 +105,7 @@ impl Default for AppConfig {
             date_format: "YYYY-MM-DD HHmmss".to_string(),
             duplicate_suffix: "(c)".to_string(),
             old_3gp_utc: true,
+            select_earlier: true,
         }
     }
 }

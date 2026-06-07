@@ -1,7 +1,12 @@
 {
   "name": "medianamefixer",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
+  "author": "kongchun <https://github.com/kongchun>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kongchun/MediaNameFixer.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

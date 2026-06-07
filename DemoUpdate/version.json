@@ -1,5 +1,5 @@
 {
-  "version": "0.1.8",
-  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.8_x64-setup.exe",
+  "version": "0.1.9",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.1.9_x64-setup.exe",
   "releaseNotes": "1. 启动时自动检查更新优化\n2. 拍摄时间来源图标显示（E=EXIF原始拍摄时间、D=EXIF数字化时间、M=Apple媒体创建时间/QuickTime创建时间、G=旧3GP本地时间）\n3. 视频拍摄时间解析优化\n4. 3GP利旧模式"
 }

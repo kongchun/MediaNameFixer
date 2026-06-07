@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [tolerance, setTolerance] = useState<number>(config.time_tolerance_seconds ?? 2);
   const [preferDateTaken, setPreferDateTaken] = useState<boolean>(config.prefer_date_taken ?? false);
   const [old3gpLegacy, setOld3gpLegacy] = useState<boolean>(!(config.old_3gp_utc ?? true));
+  const [selectEarlier, setSelectEarlier] = useState<boolean>(config.select_earlier ?? true);
   const [dateFormat, setDateFormat] = useState<string>(config.date_format ?? "YYYY-MM-DD HHmmss");
   const [duplicateSuffix, setDuplicateSuffix] = useState<string>(config.duplicate_suffix ?? "(c)");
   const [saved, setSaved] = useState(false);
@@ -36,6 +37,7 @@ export default function SettingsPage() {
       setTolerance(c.time_tolerance_seconds ?? 2);
       setPreferDateTaken(c.prefer_date_taken ?? false);
       setOld3gpLegacy(!(c.old_3gp_utc ?? true));
+      setSelectEarlier(c.select_earlier ?? true);
       setDateFormat(c.date_format ?? "YYYY-MM-DD HHmmss");
       setDuplicateSuffix(c.duplicate_suffix ?? "(c)");
       setGlobalConfig(c);
@@ -54,6 +56,7 @@ export default function SettingsPage() {
       time_tolerance_seconds: tolerance,
       prefer_date_taken: preferDateTaken,
       old_3gp_utc: !old3gpLegacy,
+      select_earlier: selectEarlier,
       date_format: dateFormat,
       duplicate_suffix: duplicateSuffix,
     };
@@ -187,6 +190,22 @@ export default function SettingsPage() {
                   </label>
                   <p className="text-xs text-muted-foreground">
                     勾选后，按时间日期重命名时，只要文件有拍摄时间（EXIF），就直接使用拍摄时间作为新文件名，不再比较修改时间取最早。
+                  </p>
+                </div>
+
+                {/* Select Earlier */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectEarlier}
+                      onChange={(e) => setSelectEarlier(e.target.checked)}
+                      className="rounded border-input"
+                    />
+                    原文件名称时间更早时，不推荐修改
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    智能分析时，若原文件名时间早于新文件名时间，不推荐修改。取消勾选则正常处理。
                   </p>
                 </div>
 
