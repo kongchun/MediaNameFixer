@@ -208,7 +208,7 @@ export default function HomePage() {
     // 检查更新（静默检测，不弹窗）
     getAppVersion().then((version) => {
       setAppVersion(version);
-      checkRemoteVersion().then((info) => {
+      checkRemoteVersion(config.update_mode || "dual").then((info) => {
         if (info && version && isNewVersion(version, info.version)) {
           setUpdateInfo(info);
         } else {

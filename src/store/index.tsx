@@ -30,6 +30,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     duplicate_suffix: "(c)",
     show_thumbnail: true,
     thumbnail_size: "medium",
+    theme: "liubai",
+    update_mode: "dual",
   });
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 

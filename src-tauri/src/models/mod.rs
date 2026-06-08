@@ -90,6 +90,8 @@ pub struct AppConfig {
     pub select_earlier: bool,
     pub show_thumbnail: bool,
     pub thumbnail_size: String,
+    pub theme: String,
+    pub update_mode: String,
 }
 
 impl Default for AppConfig {
@@ -110,6 +112,8 @@ impl Default for AppConfig {
             select_earlier: true,
             show_thumbnail: true,
             thumbnail_size: "medium".to_string(),
+            theme: "liubai".to_string(),
+            update_mode: "dual".to_string(),
         }
     }
 }

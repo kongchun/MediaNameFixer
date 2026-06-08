@@ -60,6 +60,8 @@ export interface AppConfig {
   select_earlier?: boolean;
   show_thumbnail?: boolean;
   thumbnail_size?: "small" | "medium" | "large";
+  theme?: "liubai" | "mudan";
+  update_mode?: "dual" | "public" | "local";
 }
 
 export type Tab = "rename" | "archive" | "settings";

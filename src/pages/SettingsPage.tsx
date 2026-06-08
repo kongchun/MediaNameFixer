@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { getConfig, setConfig, openUrl, getAppVersion, clearThumbnailCache, getThumbnailCacheSize } from "../api/tauri";
-import { checkRemoteVersion, isNewVersion } from "../api/update";
+import { checkRemoteVersion, isNewVersion, type UpdateMode } from "../api/update";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "@/components/message-modal";
 import { Settings, Save, Check, ArrowLeft, RotateCcw, RefreshCw, ExternalLink, Home } from "lucide-react";
 
-type MenuKey = "general" | "format" | "about";
+type MenuKey = "general" | "thumbnail" | "format" | "lab" | "about";
 
 export default function SettingsPage() {
   const { config, setConfig: setGlobalConfig, setActiveTab, updateInfo, setUpdateInfo } = useAppState();
@@ -22,6 +22,10 @@ export default function SettingsPage() {
   const [thumbnailSize, setThumbnailSize] = useState<"small" | "medium" | "large">(config.thumbnail_size ?? "medium");
   const [dateFormat, setDateFormat] = useState<string>(config.date_format ?? "YYYY-MM-DD HHmmss");
   const [duplicateSuffix, setDuplicateSuffix] = useState<string>(config.duplicate_suffix ?? "(c)");
+  const [theme, setTheme] = useState<"liubai" | "mudan">(config.theme ?? "liubai");
+  const [updateMode, setUpdateMode] = useState<UpdateMode>(config.update_mode ?? "dual");
+  const [showLab, setShowLab] = useState(false);
+  const [labClickCount, setLabClickCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "has-update" | "latest" | "error">("idle");
   const [updateError, setUpdateError] = useState<string>("");
@@ -68,6 +72,8 @@ export default function SettingsPage() {
       setThumbnailSize((c.thumbnail_size ?? "medium") as "small" | "medium" | "large");
       setDateFormat(c.date_format ?? "YYYY-MM-DD HHmmss");
       setDuplicateSuffix(c.duplicate_suffix ?? "(c)");
+      setTheme((c.theme ?? "liubai") as "liubai" | "mudan");
+      setUpdateMode((c.update_mode ?? "dual") as UpdateMode);
       setGlobalConfig(c);
     });
   }, []);
@@ -87,6 +93,8 @@ export default function SettingsPage() {
       select_earlier: selectEarlier,
       show_thumbnail: showThumbnail,
       thumbnail_size: thumbnailSize,
+      theme,
+      update_mode: updateMode,
       date_format: dateFormat,
       duplicate_suffix: duplicateSuffix,
     };
@@ -97,8 +105,10 @@ export default function SettingsPage() {
   }
 
   const menuItems: { key: MenuKey; label: string }[] = [
-    { key: "general", label: "基本设置" },
+    { key: "general", label: "基本信息" },
     { key: "format", label: "文件名格式" },
+    { key: "thumbnail", label: "缩略图" },
+    ...(showLab ? [{ key: "lab" as MenuKey, label: "实验室" }] : []),
     { key: "about", label: "关于" },
   ];
 
@@ -142,7 +152,9 @@ export default function SettingsPage() {
               <h1 className="text-xl font-semibold tracking-tight">设置</h1>
               <p className="text-sm text-muted-foreground">
                 {activeMenu === "general" && "配置 EXIF 解析引擎和相关参数"}
+                {activeMenu === "thumbnail" && "配置缩略图显示和缓存"}
                 {activeMenu === "format" && "自定义重命名后的文件名格式"}
+                {activeMenu === "lab" && "实验性功能，谨慎使用"}
                 {activeMenu === "about" && "关于 MediaNameFixer"}
               </p>
             </div>
@@ -257,9 +269,32 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* 缩略图 */}
-                <div className="space-y-4 border-t pt-6">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">缩略图</h3>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/50 rounded-b-xl">
+                {saved ? (
+                  <div className="flex items-center gap-1.5 text-sm text-green-600">
+                    <Check size={14} />
+                    已保存
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">修改后点击保存生效</div>
+                )}
+                <Button size="sm" onClick={handleSave}>
+                  <Save size={14} className="mr-1.5" />
+                  保存
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 缩略图 */}
+          {activeMenu === "thumbnail" && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+              <div className="p-6 space-y-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">显示设置</h3>
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
                       <input
@@ -299,7 +334,10 @@ export default function SettingsPage() {
                       </p>
                     </div>
                   )}
+                </div>
 
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">缓存管理</h3>
                   <div className="space-y-2">
                     <label className="text-sm font-medium leading-none">缩略图缓存</label>
                     <div className="flex items-center gap-2">
@@ -322,6 +360,9 @@ export default function SettingsPage() {
                         当前缓存: {cacheSize}
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      缩略图缓存上限 1GB，超过后自动清理最早生成的文件。
+                    </p>
                   </div>
                 </div>
               </div>
@@ -429,6 +470,106 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* 实验室 */}
+          {activeMenu === "lab" && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+              <div className="p-6 space-y-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">系统配色</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setTheme("liubai")}
+                      className={cn(
+                        "relative rounded-lg border p-4 text-left transition-colors",
+                        theme === "liubai"
+                          ? "border-primary ring-1 ring-primary bg-accent"
+                          : "border-input hover:bg-accent/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-md bg-neutral-900 border" />
+                        <div className="w-10 h-10 rounded-md bg-white border" />
+                      </div>
+                      <p className="text-sm font-medium">留白</p>
+                      <p className="text-xs text-muted-foreground mt-1">默认中性灰，简洁纯粹</p>
+                      {theme === "liubai" && (
+                        <div className="absolute top-2 right-2">
+                          <Check size={14} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setTheme("mudan")}
+                      className={cn(
+                        "relative rounded-lg border p-4 text-left transition-colors",
+                        theme === "mudan"
+                          ? "border-primary ring-1 ring-primary bg-accent"
+                          : "border-input hover:bg-accent/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-md bg-[#6366f1] border" />
+                        <div className="w-10 h-10 rounded-md bg-[#f1f5f9] border" />
+                      </div>
+                      <p className="text-sm font-medium">暮靛</p>
+                      <p className="text-xs text-muted-foreground mt-1">Slate + Indigo，柔和深邃</p>
+                      {theme === "mudan" && (
+                        <div className="absolute top-2 right-2">
+                          <Check size={14} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">升级检查</h3>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">检查模式</label>
+                    <div className="flex gap-2">
+                      {(["dual", "public", "local"] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setUpdateMode(m)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-md text-sm border transition-colors",
+                            updateMode === m
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-input hover:bg-accent"
+                          )}
+                        >
+                          {m === "dual" ? "并发优选" : m === "public" ? "公网优先" : "内网优先"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {updateMode === "dual" && "同时请求公网和内网，取版本号更高的结果（推荐）"}
+                      {updateMode === "public" && "只请求公网更新地址"}
+                      {updateMode === "local" && "只请求内网更新地址"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/50 rounded-b-xl">
+                {saved ? (
+                  <div className="flex items-center gap-1.5 text-sm text-green-600">
+                    <Check size={14} />
+                    已保存
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">修改后点击保存生效</div>
+                )}
+                <Button size="sm" onClick={handleSave}>
+                  <Save size={14} className="mr-1.5" />
+                  保存
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* 关于 */}
           {activeMenu === "about" && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -438,7 +579,21 @@ export default function SettingsPage() {
                     <h3 className="text-sm font-semibold">版本信息</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
                       <div className="flex items-center gap-2">
-                        <span>当前版本：{appVersion}</span>
+                        <span
+                          className="cursor-pointer select-none"
+                          onClick={() => {
+                            const next = labClickCount + 1;
+                            setLabClickCount(next);
+                            if (next >= 5) {
+                              setShowLab(true);
+                              setLabClickCount(0);
+                              showModal("提示", "实验室功能已解锁");
+                            }
+                          }}
+                          title="连续点击 5 次解锁实验室"
+                        >
+                          当前版本：{appVersion}
+                        </span>
                         <Button
                           size="sm"
                           variant="outline"
@@ -447,7 +602,7 @@ export default function SettingsPage() {
                             setUpdateStatus("checking");
                             setUpdateError("");
                             try {
-                              const info = await checkRemoteVersion();
+                              const info = await checkRemoteVersion(updateMode);
                               if (info && appVersion && isNewVersion(appVersion, info.version)) {
                                 setUpdateInfo(info);
                                 setUpdateStatus("has-update");
@@ -462,7 +617,7 @@ export default function SettingsPage() {
                                   logs.push(args.join(" "));
                                   originalError(...args);
                                 };
-                                await checkRemoteVersion();
+                                await checkRemoteVersion(updateMode);
                                 console.error = originalError;
                                 setUpdateError(logs.join("\n") || "无法连接到更新服务器");
                                 setUpdateStatus("error");

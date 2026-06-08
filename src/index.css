@@ -26,6 +26,29 @@
     --radius: 0.5rem;
   }
 
+  [data-theme="mudan"] {
+    --background: 222 47% 97%;
+    --foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 93%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 217 33% 93%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 217 33% 93%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 86%;
+    --input: 214 32% 86%;
+    --ring: 239 84% 67%;
+    --radius: 0.5rem;
+  }
+
   * {
     @apply border-border;
   }
