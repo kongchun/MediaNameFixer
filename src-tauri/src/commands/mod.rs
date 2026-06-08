@@ -408,17 +408,15 @@ pub fn open_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(2))
-        .timeout(std::time::Duration::from_secs(5))
+pub fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?;
     
     let resp = client.get(&url)
         .header("User-Agent", "MediaNameFixer")
         .send()
-        .await
         .map_err(|e| format!("网络请求失败: {}", e))?;
     
     if !resp.status().is_success() {
@@ -426,7 +424,6 @@ pub async fn check_remote_version(url: String) -> Result<serde_json::Value, Stri
     }
     
     resp.json::<serde_json::Value>()
-        .await
         .map_err(|e| format!("JSON 解析失败: {}", e))
 }
 

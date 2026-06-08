@@ -7,6 +7,7 @@ mod system_thumbnail;
 
 const THUMB_WIDTH: u32 = 120;
 const THUMB_HEIGHT: u32 = 120;
+#[allow(dead_code)]
 const MAX_CACHE_SIZE_BYTES: u64 = 1024 * 1024 * 1024; // 1GB
 
 fn get_cache_dir() -> PathBuf {
@@ -215,6 +216,7 @@ fn touch_file(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn enforce_cache_limit() -> Result<(), String> {
     let cache_dir = get_cache_dir();
     if !cache_dir.exists() {
