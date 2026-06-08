@@ -123,3 +123,11 @@ export async function getThumbnailCacheSize(): Promise<string> {
 export async function clearThumbnailCache(): Promise<void> {
   return invoke("clear_thumbnail_cache");
 }
+
+export async function downloadUpdate(url: string): Promise<string> {
+  return invoke("download_update", { url });
+}
+
+export async function installUpdate(path: string): Promise<void> {
+  return invoke("install_update", { path });
+}

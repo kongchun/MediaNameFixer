@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getConfig, setConfig, openUrl, getAppVersion, clearThumbnailCache, getThumbnailCacheSize } from "../api/tauri";
+import { getConfig, setConfig, openUrl, getAppVersion, clearThumbnailCache, getThumbnailCacheSize, downloadUpdate, installUpdate } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion, type UpdateMode } from "../api/update";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "has-update" | "latest" | "error">("idle");
   const [updateError, setUpdateError] = useState<string>("");
   const [appVersion, setAppVersion] = useState<string>("");
+  const [updateStep, setUpdateStep] = useState<"idle" | "downloading" | "downloaded" | "installing">("idle");
+  const [downloadPath, setDownloadPath] = useState("");
   const [showWxDialog, setShowWxDialog] = useState(false);
   const [showQQDialog, setShowQQDialog] = useState(false);
   const [cacheSize, setCacheSize] = useState<string>("0 B");
@@ -648,15 +650,59 @@ export default function SettingsPage() {
                             </div>
                           )}
                           <div className="flex gap-2 flex-wrap">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-green-300 text-green-700 hover:bg-green-100"
-                              onClick={() => openUrl(updateInfo.downloadUrl)}
-                            >
-                              <ExternalLink size={14} className="mr-1" />
-                              立即下载
-                            </Button>
+                            {updateStep === "idle" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-300 text-green-700 hover:bg-green-100"
+                                onClick={async () => {
+                                  if (!updateInfo) return;
+                                  setUpdateStep("downloading");
+                                  try {
+                                    const path = await downloadUpdate(updateInfo.downloadUrl);
+                                    setDownloadPath(path);
+                                    setUpdateStep("downloaded");
+                                  } catch (e) {
+                                    showModal("下载失败", String(e));
+                                    setUpdateStep("idle");
+                                  }
+                                }}
+                              >
+                                <ExternalLink size={14} className="mr-1" />
+                                立即更新
+                              </Button>
+                            )}
+                            {updateStep === "downloading" && (
+                              <Button size="sm" disabled variant="outline" className="border-green-300 text-green-700">
+                                <RefreshCw size={14} className="mr-1 animate-spin" />
+                                下载中...
+                              </Button>
+                            )}
+                            {updateStep === "downloaded" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-300 text-green-700 hover:bg-green-100"
+                                onClick={async () => {
+                                  if (!downloadPath) return;
+                                  setUpdateStep("installing");
+                                  try {
+                                    await installUpdate(downloadPath);
+                                  } catch (e) {
+                                    showModal("安装失败", String(e));
+                                    setUpdateStep("downloaded");
+                                  }
+                                }}
+                              >
+                                立即安装
+                              </Button>
+                            )}
+                            {updateStep === "installing" && (
+                              <Button size="sm" disabled variant="outline" className="border-green-300 text-green-700">
+                                <RefreshCw size={14} className="mr-1 animate-spin" />
+                                安装中...
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}

@@ -13,10 +13,11 @@ import {
   removeFavoriteFolder,
   openFolder,
   openFile,
-  openUrl,
   getAppVersion,
   getThumbnail,
   openFolderAndSelect,
+  downloadUpdate,
+  installUpdate,
 } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion } from "../api/update";
 import { useAppState } from "../store";
@@ -118,6 +119,8 @@ export default function HomePage() {
   const [editingPath, setEditingPath] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateStep, setUpdateStep] = useState<"idle" | "downloading" | "downloaded" | "installing">("idle");
+  const [downloadPath, setDownloadPath] = useState("");
   const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -1084,13 +1087,66 @@ export default function HomePage() {
               )}
             </div>
             <div className="flex justify-end gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setShowUpdateDialog(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowUpdateDialog(false);
+                  setUpdateStep("idle");
+                }}
+                disabled={updateStep === "downloading" || updateStep === "installing"}
+              >
                 稍后提醒
               </Button>
-              <Button size="sm" onClick={() => { openUrl(updateInfo.downloadUrl); setShowUpdateDialog(false); }}>
-                <ExternalLink size={14} className="mr-1.5" />
-                立即下载
-              </Button>
+              {updateStep === "idle" && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (!updateInfo) return;
+                    setUpdateStep("downloading");
+                    try {
+                      const path = await downloadUpdate(updateInfo.downloadUrl);
+                      setDownloadPath(path);
+                      setUpdateStep("downloaded");
+                    } catch (e) {
+                      showModal("下载失败", String(e));
+                      setUpdateStep("idle");
+                    }
+                  }}
+                >
+                  <ExternalLink size={14} className="mr-1.5" />
+                  立即更新
+                </Button>
+              )}
+              {updateStep === "downloading" && (
+                <Button size="sm" disabled>
+                  <RefreshCw size={14} className="mr-1.5 animate-spin" />
+                  下载中...
+                </Button>
+              )}
+              {updateStep === "downloaded" && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (!downloadPath) return;
+                    setUpdateStep("installing");
+                    try {
+                      await installUpdate(downloadPath);
+                    } catch (e) {
+                      showModal("安装失败", String(e));
+                      setUpdateStep("downloaded");
+                    }
+                  }}
+                >
+                  立即安装
+                </Button>
+              )}
+              {updateStep === "installing" && (
+                <Button size="sm" disabled>
+                  <RefreshCw size={14} className="mr-1.5 animate-spin" />
+                  安装中...
+                </Button>
+              )}
             </div>
           </div>
         </div>

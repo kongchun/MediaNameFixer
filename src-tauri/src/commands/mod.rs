@@ -447,3 +447,74 @@ pub fn get_thumbnail_cache_size() -> Result<String, String> {
 pub fn clear_thumbnail_cache() -> Result<(), String> {
     thumbnail::clear_thumbnail_cache()
 }
+
+#[tauri::command]
+pub fn download_update(url: String) -> Result<String, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client.get(&url)
+        .header("User-Agent", "MediaNameFixer")
+        .send()
+        .map_err(|e| format!("下载失败: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}: {}", resp.status().as_u16(), url));
+    }
+
+    // 保存到应用数据目录，避免被用户误删或被安全软件拦截
+    let save_dir = dirs::data_local_dir()
+        .map(|d| d.join("MediaNameFixer").join("updates"))
+        .unwrap_or_else(|| std::env::temp_dir().join("MediaNameFixer").join("updates"));
+    std::fs::create_dir_all(&save_dir).map_err(|e| e.to_string())?;
+    let file_name = url.split('/').last().unwrap_or("update.exe");
+    let file_path = save_dir.join(file_name);
+
+    let bytes = resp.bytes().map_err(|e| e.to_string())?;
+    std::fs::write(&file_path, bytes).map_err(|e| e.to_string())?;
+
+    // 清理旧安装包，只保留最新的 2 个
+    if let Ok(entries) = std::fs::read_dir(&save_dir) {
+        let mut files: Vec<_> = entries
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .filter_map(|e| {
+                let meta = e.metadata().ok()?;
+                let modified = meta.modified().ok()?;
+                Some((e.path(), modified))
+            })
+            .collect();
+        files.sort_by(|a, b| b.1.cmp(&a.1)); // 按修改时间降序
+        for (path, _) in files.iter().skip(2) {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn install_update(path: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        // 正常模式启动安装包（显示 NSIS 向导）
+        std::process::Command::new(&path)
+            .spawn()
+            .map_err(|e| format!("启动安装程序失败: {}", e))?;
+
+        // 延迟 2 秒后退出当前应用，释放文件锁
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            app_handle.exit(0);
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        return Err("暂不支持此平台".to_string());
+    }
+
+    Ok(())
+}

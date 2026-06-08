@@ -50,6 +50,8 @@ pub fn run() {
             get_thumbnail,
             get_thumbnail_cache_size,
             clear_thumbnail_cache,
+            download_update,
+            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
