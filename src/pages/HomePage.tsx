@@ -53,14 +53,36 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
 function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large" }) {
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
+  const [inView, setInView] = useState(false);
   const category = getFileCategory(ext);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const sizeClass = size === "small" ? "w-10 h-10" : size === "large" ? "w-[72px] h-[72px]" : "w-14 h-14";
 
+  // IntersectionObserver：仅在进入可视区域时加载缩略图
   useEffect(() => {
-    if (!enabled) return;
-    // 图片和视频都尝试获取缩略图
+    if (!enabled || !containerRef.current) return;
     if (category !== "image" && category !== "video") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { rootMargin: "100px" } // 提前 100px 开始加载，平滑滚动体验
+    );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [enabled, category]);
+
+  // 进入可视区域后再获取缩略图
+  useEffect(() => {
+    if (!inView) return;
     let cancelled = false;
     getThumbnail(filePath).then((path) => {
       if (!cancelled && path) {
@@ -70,7 +92,7 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
       // 失败则保持空，显示图标
     });
     return () => { cancelled = true; };
-  }, [filePath, ext, enabled, category]);
+  }, [inView, filePath]);
 
   if (!enabled) return null;
 
@@ -80,6 +102,7 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
 
   return (
     <div
+      ref={containerRef}
       className={`${sizeClass} flex items-center justify-center rounded overflow-hidden bg-muted flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all`}
       onClick={handleOpen}
       title="点击打开文件"
