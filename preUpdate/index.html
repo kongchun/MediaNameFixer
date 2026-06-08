@@ -224,9 +224,10 @@
       </div>
       <div class="version-desc">
         <ul>
-          <li>版本检测支持手动检查和双地址优选</li>
-          <li>弹窗风格统一，按钮视觉层次优化</li>
-          <li>UI细节打磨和交互体验提升</li>
+          <li>启动时自动检查更新优化</li>
+          <li>拍摄时间来源图标显示（E=EXIF、D=数字化时间、M=媒体创建时间、G=旧3GP本地时间）</li>
+          <li>视频拍摄时间解析优化</li>
+          <li>3GP 利旧模式支持</li>
         </ul>
       </div>
       <a class="download-btn" href="./MediaNameFixer_0.1.9_x64-setup.exe" download data-file="MediaNameFixer_0.1.9_x64-setup.exe">
@@ -265,17 +266,23 @@
   </div>
 
   <script>
-    // 检测安装包是否存在，不存在则隐藏下载按钮
+    // 检测安装包是否存在，不存在则显示"暂无下载"
     document.querySelectorAll('a[data-file]').forEach(function(link) {
       var file = link.getAttribute('data-file');
       fetch(file, { method: 'HEAD' })
         .then(function(res) {
           if (!res.ok) {
-            link.style.display = 'none';
+            link.removeAttribute('href');
+            link.removeAttribute('download');
+            link.classList.add('disabled');
+            link.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>暂无下载';
           }
         })
         .catch(function() {
-          link.style.display = 'none';
+          link.removeAttribute('href');
+          link.removeAttribute('download');
+          link.classList.add('disabled');
+          link.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>暂无下载';
         });
     });
   </script>
