@@ -50,35 +50,6 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
   return "other";
 }
 
-// 缩略图请求队列：限制并发数，避免同时发起过多 IPC 调用
-const THUMB_QUEUE: { filePath: string; resolve: (src: string) => void; reject: () => void }[] = [];
-let THUMB_RUNNING = 0;
-const THUMB_MAX_CONCURRENT = 3;
-
-function processThumbQueue() {
-  if (THUMB_RUNNING >= THUMB_MAX_CONCURRENT || THUMB_QUEUE.length === 0) return;
-  const item = THUMB_QUEUE.shift()!;
-  THUMB_RUNNING++;
-  getThumbnail(item.filePath)
-    .then((path) => {
-      item.resolve(path ? convertFileSrc(path) : "");
-    })
-    .catch(() => {
-      item.reject();
-    })
-    .finally(() => {
-      THUMB_RUNNING--;
-      processThumbQueue();
-    });
-}
-
-function queueThumbnail(filePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    THUMB_QUEUE.push({ filePath, resolve, reject });
-    processThumbQueue();
-  });
-}
-
 function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large" }) {
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -109,13 +80,13 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
     return () => observer.disconnect();
   }, [enabled, category]);
 
-  // 进入可视区域后再通过队列获取缩略图
+  // 进入可视区域后再获取缩略图
   useEffect(() => {
     if (!inView) return;
     let cancelled = false;
-    queueThumbnail(filePath).then((src) => {
-      if (!cancelled) {
-        setThumbSrc(src);
+    getThumbnail(filePath).then((path) => {
+      if (!cancelled && path) {
+        setThumbSrc(convertFileSrc(path));
       }
     }).catch(() => {
       // 失败则保持空，显示图标
@@ -238,7 +209,10 @@ export default function HomePage() {
 
   // 启动时读取配置，自动加载上次文件夹
   useEffect(() => {
+    console.time("[启动] 整体耗时");
+    console.time("[启动] getConfig");
     getConfig().then((cfg) => {
+      console.timeEnd("[启动] getConfig");
       setGlobalConfig(cfg);
       if (cfg.recent_folders.length > 0) {
         setRecentPaths(cfg.recent_folders.slice(0, 5));
@@ -246,33 +220,36 @@ export default function HomePage() {
       if (cfg.last_folder) {
         const p = cfg.last_folder;
         setFolderPath(p);
-        // 恢复上次选中的子文件夹，没有则默认主文件夹
         const selected = cfg.last_selected_folder || p;
         setSelectedFolder(selected);
-        // 恢复展开状态
         if (cfg.expanded_paths) {
           setExpandedPaths(cfg.expanded_paths);
         }
+        console.time("[启动] scanFiles");
         scanFiles(selected).then((list) => {
+          console.timeEnd("[启动] scanFiles");
+          console.time("[启动] setFiles+selectNeedRename");
           setFiles(list);
           selectNeedRename(list);
+          console.timeEnd("[启动] setFiles+selectNeedRename");
+          console.timeEnd("[启动] 整体耗时");
         }).catch(console.error);
+      } else {
+        console.timeEnd("[启动] 整体耗时");
       }
     }).catch(console.error);
 
-    // 检查更新延迟 3 秒执行，避免与文件扫描竞争资源
-    setTimeout(() => {
-      getAppVersion().then((version) => {
-        setAppVersion(version);
-        checkRemoteVersion(config.update_mode || "dual").then((info) => {
-          if (info && version && isNewVersion(version, info.version)) {
-            setUpdateInfo(info);
-          } else {
-            setUpdateInfo(null);
-          }
-        }).catch(() => setUpdateInfo(null));
-      }).catch(console.error);
-    }, 3000);
+    // 检查更新（静默检测，不弹窗）
+    getAppVersion().then((version) => {
+      setAppVersion(version);
+      checkRemoteVersion(config.update_mode || "dual").then((info) => {
+        if (info && version && isNewVersion(version, info.version)) {
+          setUpdateInfo(info);
+        } else {
+          setUpdateInfo(null);
+        }
+      }).catch(() => setUpdateInfo(null));
+    }).catch(console.error);
   }, []);
 
   // 切换重命名模式时清空手动编辑

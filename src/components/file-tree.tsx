@@ -121,9 +121,12 @@ export function FileTree({
       setRoot(null);
       return;
     }
+    console.time("[树] listDirectories: " + rootPath);
     const name = rootPath.split("\\").pop() || rootPath;
     listDirectories(rootPath)
       .then((dirs) => {
+        console.timeEnd("[树] listDirectories: " + rootPath);
+        console.time("[树] setRoot");
         setRoot({
           name,
           path: rootPath,
@@ -137,6 +140,7 @@ export function FileTree({
           isLoaded: true,
           isExpanded: true,
         });
+        console.timeEnd("[树] setRoot");
       })
       .catch((err) => {
         console.error("listDirectories error:", err);
@@ -144,8 +148,12 @@ export function FileTree({
   }, [rootPath]);
 
   useEffect(() => {
+    console.time("[树] getSpecialFolders");
     getSpecialFolders()
-      .then(setQuickAccess)
+      .then((items) => {
+        console.timeEnd("[树] getSpecialFolders");
+        setQuickAccess(items);
+      })
       .catch((err) => {
         console.error("getSpecialFolders error:", err);
       });
