@@ -231,17 +231,19 @@ export default function HomePage() {
       }
     }).catch(console.error);
 
-    // 检查更新（静默检测，不弹窗）
-    getAppVersion().then((version) => {
-      setAppVersion(version);
-      checkRemoteVersion(config.update_mode || "dual").then((info) => {
-        if (info && version && isNewVersion(version, info.version)) {
-          setUpdateInfo(info);
-        } else {
-          setUpdateInfo(null);
-        }
-      }).catch(() => setUpdateInfo(null));
-    }).catch(console.error);
+    // 检查更新延迟 3 秒执行，避免与文件扫描竞争资源
+    setTimeout(() => {
+      getAppVersion().then((version) => {
+        setAppVersion(version);
+        checkRemoteVersion(config.update_mode || "dual").then((info) => {
+          if (info && version && isNewVersion(version, info.version)) {
+            setUpdateInfo(info);
+          } else {
+            setUpdateInfo(null);
+          }
+        }).catch(() => setUpdateInfo(null));
+      }).catch(console.error);
+    }, 3000);
   }, []);
 
   // 切换重命名模式时清空手动编辑
