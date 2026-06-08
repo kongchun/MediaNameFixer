@@ -2,6 +2,7 @@ pub mod commands;
 pub mod config;
 pub mod core;
 pub mod models;
+pub mod thumbnail;
 pub mod utils;
 
 use commands::*;
@@ -42,9 +43,13 @@ pub fn run() {
             remove_favorite_folder,
             open_folder,
             open_file,
+            open_folder_and_select,
             open_url,
             check_remote_version,
             get_app_version,
+            get_thumbnail,
+            get_thumbnail_cache_size,
+            clear_thumbnail_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

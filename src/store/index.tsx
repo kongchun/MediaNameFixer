@@ -28,6 +28,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     prefer_date_taken: false,
     date_format: "YYYY-MM-DD HHmmss",
     duplicate_suffix: "(c)",
+    show_thumbnail: true,
+    thumbnail_size: "medium",
   });
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 

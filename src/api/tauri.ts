@@ -92,6 +92,10 @@ export async function openFile(path: string): Promise<void> {
   return invoke("open_file", { path });
 }
 
+export async function openFolderAndSelect(path: string): Promise<void> {
+  return invoke("open_folder_and_select", { path });
+}
+
 export async function openUrl(url: string): Promise<void> {
   return invoke("open_url", { url });
 }
@@ -106,4 +110,16 @@ export async function checkRemoteVersion(url: string): Promise<any> {
 
 export async function getAppVersion(): Promise<string> {
   return invoke("get_app_version");
+}
+
+export async function getThumbnail(filePath: string): Promise<string> {
+  return invoke("get_thumbnail", { filePath });
+}
+
+export async function getThumbnailCacheSize(): Promise<string> {
+  return invoke("get_thumbnail_cache_size");
+}
+
+export async function clearThumbnailCache(): Promise<void> {
+  return invoke("clear_thumbnail_cache");
 }

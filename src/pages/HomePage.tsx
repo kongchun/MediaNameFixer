@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   selectFolder,
   scanFiles,
@@ -14,6 +15,8 @@ import {
   openFile,
   openUrl,
   getAppVersion,
+  getThumbnail,
+  openFolderAndSelect,
 } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion } from "../api/update";
 import { useAppState } from "../store";
@@ -27,8 +30,8 @@ import { computeRenamePreview, computeArchivePreview, isWithinTimeTolerance, com
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
-import { MessageModal } from "@/components/message-modal";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check } from "lucide-react";
+import { MessageModal, ConfirmModal } from "@/components/message-modal";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check, FileImage } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -44,6 +47,60 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
   if (IMAGE_EXTS.has(e)) return "image";
   if (VIDEO_EXTS.has(e)) return "video";
   return "other";
+}
+
+function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large" }) {
+  const [thumbSrc, setThumbSrc] = useState<string>("");
+  const [loaded, setLoaded] = useState(false);
+  const category = getFileCategory(ext);
+
+  const sizeClass = size === "small" ? "w-10 h-10" : size === "large" ? "w-[72px] h-[72px]" : "w-14 h-14";
+
+  useEffect(() => {
+    if (!enabled) return;
+    // 图片和视频都尝试获取缩略图
+    if (category !== "image" && category !== "video") return;
+    let cancelled = false;
+    getThumbnail(filePath).then((path) => {
+      if (!cancelled && path) {
+        setThumbSrc(convertFileSrc(path));
+      }
+    }).catch(() => {
+      // 失败则保持空，显示图标
+    });
+    return () => { cancelled = true; };
+  }, [filePath, ext, enabled, category]);
+
+  if (!enabled) return null;
+
+  const handleOpen = () => {
+    openFile(filePath).catch(() => {});
+  };
+
+  return (
+    <div
+      className={`${sizeClass} flex items-center justify-center rounded overflow-hidden bg-muted flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all`}
+      onClick={handleOpen}
+      title="点击打开文件"
+    >
+      {thumbSrc ? (
+        <img
+          src={thumbSrc}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          style={{ opacity: loaded ? 1 : 0, transition: "opacity 0.2s" }}
+        />
+      ) : category === "video" ? (
+        <Video size={18} className="text-muted-foreground" />
+      ) : category === "image" ? (
+        <FileImage size={18} className="text-muted-foreground" />
+      ) : (
+        <FileImage size={18} className="text-muted-foreground" />
+      )}
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -65,6 +122,8 @@ export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: "", message: "" });
+  const confirmCallbackRef = useRef<(() => void) | null>(null);
   const [backendArchiveOps, setBackendArchiveOps] = useState<ArchiveOperation[]>([]);
   const [appVersion, setAppVersion] = useState<string>("");
 
@@ -352,15 +411,35 @@ export default function HomePage() {
       return;
     }
 
-    await executeRename(opsToExecute);
-    showModal("重命名完成", `已成功重命名 ${opsToExecute.length} 个文件`);
-    setManualRenameMap(new Map());
-    setManualTimeSourceMap(new Map());
-    setEditingPath(null);
-    const target = selectedFolder || folderPath;
-    const list = await scanFiles(target);
-    setFiles(list);
-    updateSelectedPaths(list.map((f) => f.path));
+    confirmCallbackRef.current = async () => {
+      const prevSelected = new Set(selectedPaths);
+      await executeRename(opsToExecute);
+      showModal("重命名完成", `已成功重命名 ${opsToExecute.length} 个文件`);
+      setManualRenameMap(new Map());
+      setManualTimeSourceMap(new Map());
+      setEditingPath(null);
+      const target = selectedFolder || folderPath;
+      const list = await scanFiles(target);
+      setFiles(list);
+      // 保持勾选：被改名的文件用新路径替换，其他保持原路径
+      const newSelected = new Set<string>();
+      for (const path of prevSelected) {
+        const op = opsToExecute.find((o) => o.old_path === path);
+        if (op) {
+          newSelected.add(op.new_path);
+        } else {
+          newSelected.add(path);
+        }
+      }
+      const existingPaths = new Set(list.map((f) => f.path));
+      const finalSelected = new Set([...newSelected].filter((p) => existingPaths.has(p)));
+      setSelectedPaths(finalSelected);
+    };
+    setConfirmModal({
+      open: true,
+      title: "确认重命名",
+      message: `即将重命名 ${opsToExecute.length} 个文件，此操作不可恢复，是否继续？`,
+    });
   }
 
   async function handlePreviewArchive() {
@@ -374,12 +453,22 @@ export default function HomePage() {
       ? archiveOps
       : archiveOps.filter((op) => selectedPaths.has(op.old_path) && visiblePaths.has(op.old_path));
     if (opsToExecute.length === 0) return;
-    await executeArchive(opsToExecute);
-    showModal("归档完成", `已成功归档 ${opsToExecute.length} 个文件`);
-    const target = selectedFolder || folderPath;
-    const list = await scanFiles(target);
-    setFiles(list);
-    updateSelectedPaths(list.map((f) => f.path));
+
+    const currentFolder = selectedFolder || folderPath;
+
+    confirmCallbackRef.current = async () => {
+      await executeArchive(opsToExecute);
+      showModal("归档完成", `已成功归档 ${opsToExecute.length} 个文件`);
+      const target = selectedFolder || folderPath;
+      const list = await scanFiles(target);
+      setFiles(list);
+      updateSelectedPaths(list.map((f) => f.path));
+    };
+    setConfirmModal({
+      open: true,
+      title: "确认归档",
+      message: `即将归档 ${opsToExecute.length} 个文件\n当前文件夹：${currentFolder}\n此操作不可恢复，是否继续？`,
+    });
   }
 
   const filteredFiles = useMemo(() => {
@@ -639,6 +728,9 @@ export default function HomePage() {
                       onChange={toggleSelectAll}
                     />
                   </th>
+                  {config.show_thumbnail && (
+                    <th className={`${config.thumbnail_size === "small" ? "w-12" : config.thumbnail_size === "large" ? "w-20" : "w-16"} px-2 py-2 text-center font-medium text-muted-foreground`}>缩略图</th>
+                  )}
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
                     {activeTab === "rename" ? "原文件名" : "文件名"}
                   </th>
@@ -689,7 +781,7 @@ export default function HomePage() {
                 {filteredFiles.length === 0 && (
                   <tr>
                     <td
-                      colSpan={activeTab === "rename" ? 7 : 6}
+                      colSpan={activeTab === "rename" ? (config.show_thumbnail ? 8 : 7) : (config.show_thumbnail ? 7 : 6)}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       {folderPath ? "该文件夹下无文件" : "请从左侧选择文件夹"}
@@ -710,6 +802,11 @@ export default function HomePage() {
                           onChange={() => toggleSelectFile(file.path)}
                         />
                       </td>
+                      {config.show_thumbnail && (
+                        <td className="px-2 py-2">
+                          <ThumbnailCell filePath={file.path} ext={file.ext} enabled={config.show_thumbnail ?? true} size={config.thumbnail_size} />
+                        </td>
+                      )}
                       <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && compareFileTime(file.name, finalNewName, config.time_tolerance_seconds ?? 2) === "<" ? "text-orange-500" : ""}`}>
                         <div className="flex items-center gap-1">
                           <span className="flex-1">{file.name}</span>
@@ -717,9 +814,9 @@ export default function HomePage() {
                             className="p-0.5 rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openFile(file.path);
+                              openFolderAndSelect(file.path);
                             }}
-                            title="打开文件"
+                            title="在文件夹中定位"
                           >
                             <ExternalLink size={14} />
                           </button>
@@ -952,7 +1049,7 @@ export default function HomePage() {
               视频
             </Button>
             <span className="text-xs text-muted-foreground ml-auto">
-              共 {files.length} 个文件，已选 {selectedPaths.size} 个
+              共 {filteredFiles.length} 个文件，已选 {filteredFiles.filter((f) => selectedPaths.has(f.path)).length} 个
             </span>
           </div>
         </div>
@@ -1003,6 +1100,21 @@ export default function HomePage() {
         title={modalTitle}
         message={modalMessage}
         onClose={() => setModalOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={() => {
+          const cb = confirmCallbackRef.current;
+          confirmCallbackRef.current = null;
+          setConfirmModal(prev => ({ ...prev, open: false }));
+          if (cb) cb();
+        }}
+        onCancel={() => {
+          confirmCallbackRef.current = null;
+          setConfirmModal(prev => ({ ...prev, open: false }));
+        }}
       />
     </div>
   );

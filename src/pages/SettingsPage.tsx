@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { getConfig, setConfig, openUrl, getAppVersion } from "../api/tauri";
+import { getConfig, setConfig, openUrl, getAppVersion, clearThumbnailCache, getThumbnailCacheSize } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion } from "../api/update";
 import { useAppState } from "../store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MessageModal } from "@/components/message-modal";
 import { Settings, Save, Check, ArrowLeft, RotateCcw, RefreshCw, ExternalLink, Home } from "lucide-react";
 
 type MenuKey = "general" | "format" | "about";
@@ -17,6 +18,8 @@ export default function SettingsPage() {
   const [preferDateTaken, setPreferDateTaken] = useState<boolean>(config.prefer_date_taken ?? false);
   const [old3gpLegacy, setOld3gpLegacy] = useState<boolean>(!(config.old_3gp_utc ?? true));
   const [selectEarlier, setSelectEarlier] = useState<boolean>(config.select_earlier ?? true);
+  const [showThumbnail, setShowThumbnail] = useState<boolean>(config.show_thumbnail ?? true);
+  const [thumbnailSize, setThumbnailSize] = useState<"small" | "medium" | "large">(config.thumbnail_size ?? "medium");
   const [dateFormat, setDateFormat] = useState<string>(config.date_format ?? "YYYY-MM-DD HHmmss");
   const [duplicateSuffix, setDuplicateSuffix] = useState<string>(config.duplicate_suffix ?? "(c)");
   const [saved, setSaved] = useState(false);
@@ -25,6 +28,29 @@ export default function SettingsPage() {
   const [appVersion, setAppVersion] = useState<string>("");
   const [showWxDialog, setShowWxDialog] = useState(false);
   const [showQQDialog, setShowQQDialog] = useState(false);
+  const [cacheSize, setCacheSize] = useState<string>("0 B");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  function showModal(title: string, message: string) {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalOpen(true);
+  }
+
+  const loadCacheSize = async () => {
+    try {
+      const size = await getThumbnailCacheSize();
+      setCacheSize(size);
+    } catch {
+      setCacheSize("0 B");
+    }
+  };
+
+  useEffect(() => {
+    loadCacheSize();
+  }, []);
 
   useEffect(() => {
     getAppVersion().then(setAppVersion).catch(console.error);
@@ -38,6 +64,8 @@ export default function SettingsPage() {
       setPreferDateTaken(c.prefer_date_taken ?? false);
       setOld3gpLegacy(!(c.old_3gp_utc ?? true));
       setSelectEarlier(c.select_earlier ?? true);
+      setShowThumbnail(c.show_thumbnail ?? true);
+      setThumbnailSize((c.thumbnail_size ?? "medium") as "small" | "medium" | "large");
       setDateFormat(c.date_format ?? "YYYY-MM-DD HHmmss");
       setDuplicateSuffix(c.duplicate_suffix ?? "(c)");
       setGlobalConfig(c);
@@ -57,6 +85,8 @@ export default function SettingsPage() {
       prefer_date_taken: preferDateTaken,
       old_3gp_utc: !old3gpLegacy,
       select_earlier: selectEarlier,
+      show_thumbnail: showThumbnail,
+      thumbnail_size: thumbnailSize,
       date_format: dateFormat,
       duplicate_suffix: duplicateSuffix,
     };
@@ -121,108 +151,178 @@ export default function SettingsPage() {
           {/* 基本设置 */}
           {activeMenu === "general" && (
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-              <div className="p-6 space-y-6">
-                {/* EXIF Provider */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    EXIF 解析引擎
-                  </label>
-                  <select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="kamadak">kamadak-exif（默认，纯 Rust）</option>
-                    <option value="exiftool">exiftool（外部程序）</option>
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    选择用于读取照片拍摄时间的解析引擎。kamadak-exif 为纯 Rust 实现，无需外部依赖。
-                  </p>
-                </div>
-
-                {/* exiftool path */}
-                {provider === "exiftool" && (
+              <div className="p-6 space-y-8">
+                {/* EXIF 解析 */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">EXIF 解析</h3>
                   <div className="space-y-2">
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      exiftool 路径
+                      EXIF 解析引擎
                     </label>
-                    <input
-                      type="text"
-                      value={path}
-                      onChange={(e) => setPath(e.target.value)}
-                      placeholder="留空使用系统 PATH 中的 exiftool"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
+                    <select
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="kamadak">kamadak-exif（默认，纯 Rust）</option>
+                      <option value="exiftool">exiftool（外部程序）</option>
+                    </select>
                     <p className="text-xs text-muted-foreground">
-                      如果 exiftool 不在系统 PATH 中，请填写完整路径。
+                      选择用于读取照片拍摄时间的解析引擎。kamadak-exif 为纯 Rust 实现，无需外部依赖。
                     </p>
                   </div>
-                )}
 
-                {/* Time Tolerance */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    时间容差（秒）
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={60}
-                    value={tolerance}
-                    onChange={(e) => setTolerance(Number(e.target.value))}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    新老文件名解析出的拍摄时间相差在此秒数内时，视为相同文件名，默认 2 秒。
-                  </p>
+                  {provider === "exiftool" && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        exiftool 路径
+                      </label>
+                      <input
+                        type="text"
+                        value={path}
+                        onChange={(e) => setPath(e.target.value)}
+                        placeholder="留空使用系统 PATH 中的 exiftool"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        如果 exiftool 不在系统 PATH 中，请填写完整路径。
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Prefer Date Taken */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                {/* 时间处理 */}
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">时间处理</h3>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      时间容差（秒）
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={preferDateTaken}
-                      onChange={(e) => setPreferDateTaken(e.target.checked)}
-                      className="rounded border-input"
+                      type="number"
+                      min={0}
+                      max={60}
+                      value={tolerance}
+                      onChange={(e) => setTolerance(Number(e.target.value))}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
-                    优先拍摄时间
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    勾选后，按时间日期重命名时，只要文件有拍摄时间（EXIF），就直接使用拍摄时间作为新文件名，不再比较修改时间取最早。
-                  </p>
+                    <p className="text-xs text-muted-foreground">
+                      新老文件名解析出的拍摄时间相差在此秒数内时，视为相同文件名，默认 2 秒。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={preferDateTaken}
+                        onChange={(e) => setPreferDateTaken(e.target.checked)}
+                        className="rounded border-input"
+                      />
+                      优先拍摄时间
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      勾选后，按时间日期重命名时，只要文件有拍摄时间（EXIF），就直接使用拍摄时间作为新文件名，不再比较修改时间取最早。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={selectEarlier}
+                        onChange={(e) => setSelectEarlier(e.target.checked)}
+                        className="rounded border-input"
+                      />
+                      原文件名称时间更早时，不推荐修改
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      智能分析时，若原文件名时间早于新文件名时间，不推荐修改。取消勾选则正常处理。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={old3gpLegacy}
+                        onChange={(e) => setOld3gpLegacy(e.target.checked)}
+                        className="rounded border-input"
+                      />
+                      3GP利旧模式
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      旧 3GP 设备（3gp4/3gp5/3gp6/3gp7，常见于 2001-2007 年功能机）直接写入本地时间而非 UTC。勾选此项后，旧 3GP 文件将直接使用本地时间，不再进行 UTC 转换。MP4/MOV 始终按 UTC 处理。若旧 3GP 视频时间偏差 8 小时，请勾选此项。
+                    </p>
+                  </div>
                 </div>
 
-                {/* Select Earlier */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={selectEarlier}
-                      onChange={(e) => setSelectEarlier(e.target.checked)}
-                      className="rounded border-input"
-                    />
-                    原文件名称时间更早时，不推荐修改
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    智能分析时，若原文件名时间早于新文件名时间，不推荐修改。取消勾选则正常处理。
-                  </p>
-                </div>
+                {/* 缩略图 */}
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">缩略图</h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showThumbnail}
+                        onChange={(e) => setShowThumbnail(e.target.checked)}
+                        className="rounded border-input"
+                      />
+                      显示文件缩略图
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      在文件列表中显示图片和视频缩略图。关闭可提升大文件夹加载性能。
+                    </p>
+                  </div>
 
-                {/* Old 3GP UTC */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium leading-none cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={old3gpLegacy}
-                      onChange={(e) => setOld3gpLegacy(e.target.checked)}
-                      className="rounded border-input"
-                    />
-                    3GP利旧模式
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    旧 3GP 设备（3gp4/3gp5/3gp6/3gp7，常见于 2001-2007 年功能机）直接写入本地时间而非 UTC。勾选此项后，旧 3GP 文件将直接使用本地时间，不再进行 UTC 转换。MP4/MOV 始终按 UTC 处理。若旧 3GP 视频时间偏差 8 小时，请勾选此项。
-                  </p>
+                  {showThumbnail && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">缩略图尺寸</label>
+                      <div className="flex gap-2">
+                        {(["small", "medium", "large"] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setThumbnailSize(s)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-md text-sm border transition-colors",
+                              thumbnailSize === s
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground border-input hover:bg-accent"
+                            )}
+                          >
+                            {s === "small" ? "小" : s === "medium" ? "中" : "大"}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        小=40px，中=56px，大=72px。调整尺寸后保存并重新选择文件夹生效。
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">缩略图缓存</label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await clearThumbnailCache();
+                            await loadCacheSize();
+                            showModal("提示", "缩略图缓存已清理");
+                          } catch (e) {
+                            showModal("错误", "清理失败: " + e);
+                          }
+                        }}
+                      >
+                        清理缓存
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        当前缓存: {cacheSize}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -519,6 +619,12 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+      <MessageModal
+        open={modalOpen}
+        title={modalTitle}
+        message={modalMessage}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 }

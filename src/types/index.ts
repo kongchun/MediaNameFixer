@@ -58,6 +58,8 @@ export interface AppConfig {
   duplicate_suffix?: string;
   old_3gp_utc?: boolean;
   select_earlier?: boolean;
+  show_thumbnail?: boolean;
+  thumbnail_size?: "small" | "medium" | "large";
 }
 
 export type Tab = "rename" | "archive" | "settings";

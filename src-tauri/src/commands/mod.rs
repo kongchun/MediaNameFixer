@@ -7,6 +7,7 @@ use crate::core::renamer::RenameEngine;
 use crate::models::{
     AppConfig, ArchiveOperation, ArchiveParams, DirEntry, FileInfo, QuickAccessItem, RenameOperation, RenameParams,
 };
+use crate::thumbnail;
 use crate::utils::{get_file_size, get_modified_time, get_creation_time, is_media_file, get_video_creation_time_with_source, get_mov_meta_creation_date};
 use std::path::Path;
 use tauri::State;
@@ -344,6 +345,42 @@ pub fn open_file(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn open_folder_and_select(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg("/select,")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 先打开文件夹，无法直接选中文件
+        let folder = std::path::Path::new(&path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or(path);
+        std::process::Command::new("open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let folder = std::path::Path::new(&path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or(path);
+        std::process::Command::new("xdg-open")
+            .arg(&folder)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -393,4 +430,20 @@ pub fn check_remote_version(url: String) -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
+pub fn get_thumbnail(file_path: String) -> Result<String, String> {
+    thumbnail::generate_thumbnail(&file_path)
+}
+
+#[tauri::command]
+pub fn get_thumbnail_cache_size() -> Result<String, String> {
+    let size = thumbnail::get_cache_size()?;
+    Ok(thumbnail::format_size(size))
+}
+
+#[tauri::command]
+pub fn clear_thumbnail_cache() -> Result<(), String> {
+    thumbnail::clear_thumbnail_cache()
 }

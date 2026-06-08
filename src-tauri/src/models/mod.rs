@@ -88,6 +88,8 @@ pub struct AppConfig {
     pub duplicate_suffix: String,
     pub old_3gp_utc: bool,
     pub select_earlier: bool,
+    pub show_thumbnail: bool,
+    pub thumbnail_size: String,
 }
 
 impl Default for AppConfig {
@@ -106,6 +108,8 @@ impl Default for AppConfig {
             duplicate_suffix: "(c)".to_string(),
             old_3gp_utc: true,
             select_earlier: true,
+            show_thumbnail: true,
+            thumbnail_size: "medium".to_string(),
         }
     }
 }
