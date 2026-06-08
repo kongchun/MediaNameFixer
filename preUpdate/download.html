@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaNameFixer 历史版本下载</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #86868b;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+    .version-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .version-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .version-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .version-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .version-badge {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0071e3;
+    }
+    .version-latest {
+      background: #34c759;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .version-date {
+      font-size: 13px;
+      color: #86868b;
+    }
+    .version-desc {
+      font-size: 14px;
+      color: #515154;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+    .version-desc ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .version-desc li {
+      padding-left: 16px;
+      position: relative;
+    }
+    .version-desc li::before {
+      content: "•";
+      color: #0071e3;
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0071e3;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .download-btn:hover {
+      background: #0077ed;
+    }
+    .download-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .download-btn.disabled {
+      background: #d2d2d7;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .file-size {
+      font-size: 12px;
+      color: #86868b;
+      margin-left: 12px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 13px;
+      color: #86868b;
+    }
+    .footer a {
+      color: #0071e3;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MediaNameFixer 历史版本</h1>
+    <p class="subtitle">选择适合您的版本下载，建议始终使用最新版</p>
+
+    <!-- v0.2.0 -->
+    <div class="version-card">
+      <div class="version-header">
+        <div class="version-title">
+          <span class="version-badge">v0.2.0</span>
+          <span class="version-latest">最新</span>
+        </div>
+        <span class="version-date">2026-06-08</span>
+      </div>
+      <div class="version-desc">
+        <ul>
+          <li>新增应用自动更新（检测→下载→安装一键完成）</li>
+          <li>新增缩略图预览（支持图片/视频，EXIF方向自动修正）</li>
+          <li>缩略图三档尺寸可调（小/中/大）</li>
+          <li>缩略图缓存自动管理（上限1GB，一键清理）</li>
+          <li>文件快捷操作（点击缩略图打开/定位文件夹）</li>
+          <li>新增实验室功能（设置页连续点击版本号5次解锁）</li>
+          <li>设置页面按功能分组展示</li>
+          <li>改名/归档前增加确认弹窗</li>
+        </ul>
+      </div>
+      <a class="download-btn" href="./MediaNameFixer_0.2.0_x64-setup.exe" download>
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        下载安装包
+      </a>
+      <span class="file-size">约 4.9 MB</span>
+    </div>
+
+    <!-- v0.1.9 -->
+    <div class="version-card">
+      <div class="version-header">
+        <div class="version-title">
+          <span class="version-badge">v0.1.9</span>
+        </div>
+        <span class="version-date">2026-06-08</span>
+      </div>
+      <div class="version-desc">
+        <ul>
+          <li>版本检测支持手动检查和双地址优选</li>
+          <li>弹窗风格统一，按钮视觉层次优化</li>
+          <li>UI细节打磨和交互体验提升</li>
+        </ul>
+      </div>
+      <a class="download-btn" href="./MediaNameFixer_0.1.9_x64-setup.exe" download>
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        下载安装包
+      </a>
+      <span class="file-size">约 4.7 MB</span>
+    </div>
+
+    <!-- v0.1.8 -->
+    <div class="version-card">
+      <div class="version-header">
+        <div class="version-title">
+          <span class="version-badge">v0.1.8</span>
+        </div>
+        <span class="version-date">2026-05-20</span>
+      </div>
+      <div class="version-desc">
+        <ul>
+          <li>新增文件列表照片预览功能</li>
+          <li>支持一键归档到指定文件夹</li>
+          <li>快捷访问固定选项配置</li>
+          <li>软件启动默认加载上次路径及最近访问记录</li>
+        </ul>
+      </div>
+      <a class="download-btn" href="./MediaNameFixer_0.1.8_x64-setup.exe" download>
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        下载安装包
+      </a>
+      <span class="file-size">约 4.7 MB</span>
+    </div>
+
+    <!-- v0.1.7 -->
+    <div class="version-card">
+      <div class="version-header">
+        <div class="version-title">
+          <span class="version-badge">v0.1.7</span>
+        </div>
+        <span class="version-date">2026-05-10</span>
+      </div>
+      <div class="version-desc">
+        <ul>
+          <li>基础版本，支持按 EXIF 拍摄时间批量重命名</li>
+          <li>支持图片和视频文件处理</li>
+          <li>提供基本的文件列表和操作界面</li>
+        </ul>
+      </div>
+      <a class="download-btn disabled">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        暂不提供
+      </a>
+    </div>
+
+    <div class="footer">
+      <p>更多详情访问 <a href="https://techwebplus.cn/medianamefixer/" target="_blank">项目主页</a></p>
+    </div>
+  </div>
+</body>
+</html>
