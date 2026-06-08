@@ -54,16 +54,25 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
 const THUMB_QUEUE: { filePath: string; resolve: (src: string) => void; reject: (reason?: unknown) => void }[] = [];
 let THUMB_RUNNING = 0;
 const THUMB_MAX_CONCURRENT = 6;
+let THUMB_GENERATION = 0;
+
+function clearThumbQueue() {
+  THUMB_GENERATION++;
+  THUMB_QUEUE.length = 0;
+}
 
 function processThumbQueue() {
   if (THUMB_RUNNING >= THUMB_MAX_CONCURRENT || THUMB_QUEUE.length === 0) return;
   const item = THUMB_QUEUE.shift()!;
   THUMB_RUNNING++;
+  const gen = THUMB_GENERATION;
   getThumbnail(item.filePath)
     .then((path) => {
+      if (gen !== THUMB_GENERATION) return; // 丢弃过期请求的结果
       item.resolve(path ? convertFileSrc(path) : "");
     })
     .catch(() => {
+      if (gen !== THUMB_GENERATION) return;
       item.reject();
     })
     .finally(() => {
@@ -160,6 +169,12 @@ const ThumbnailCell = memo(({ filePath, ext, enabled, size = "medium", isScrolli
 export default function HomePage() {
   const { folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig: setGlobalConfig, updateInfo, setUpdateInfo } = useAppState();
   const [files, setFiles] = useState<FileInfo[]>([]);
+
+  // 切换文件列表时清空缩略图队列，避免旧请求积压
+  useEffect(() => {
+    clearThumbQueue();
+  }, [files]);
+
   const [renameMode, setRenameMode] = useState<RenameMode>("ByDateTime");
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("ByYear");
   const [selectedFolder, setSelectedFolder] = useState<string>("");
