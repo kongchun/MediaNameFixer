@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(target_os = "windows")]
 mod system_thumbnail;
@@ -74,8 +75,12 @@ pub fn generate_thumbnail(file_path: &str) -> Result<String, String> {
         let _ = std::fs::create_dir_all(parent);
     }
 
-    // 限制缓存总大小不超过 1GB，超出则删除最老的文件
-    let _ = enforce_cache_limit();
+    // 限制缓存总大小不超过 1GB，每 10 次生成才检查一次，避免频繁扫描目录
+    static CHECK_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    let count = CHECK_COUNTER.fetch_add(1, Ordering::Relaxed);
+    if count % 10 == 0 {
+        let _ = enforce_cache_limit();
+    }
 
     // 优先尝试 Windows 系统缩略图（性能更好，方向正确，支持视频/图片）
     #[cfg(target_os = "windows")]

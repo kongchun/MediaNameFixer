@@ -50,6 +50,35 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
   return "other";
 }
 
+// 缩略图请求队列：限制并发数，避免同时发起过多 IPC 调用
+const THUMB_QUEUE: { filePath: string; resolve: (src: string) => void; reject: () => void }[] = [];
+let THUMB_RUNNING = 0;
+const THUMB_MAX_CONCURRENT = 3;
+
+function processThumbQueue() {
+  if (THUMB_RUNNING >= THUMB_MAX_CONCURRENT || THUMB_QUEUE.length === 0) return;
+  const item = THUMB_QUEUE.shift()!;
+  THUMB_RUNNING++;
+  getThumbnail(item.filePath)
+    .then((path) => {
+      item.resolve(path ? convertFileSrc(path) : "");
+    })
+    .catch(() => {
+      item.reject();
+    })
+    .finally(() => {
+      THUMB_RUNNING--;
+      processThumbQueue();
+    });
+}
+
+function queueThumbnail(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    THUMB_QUEUE.push({ filePath, resolve, reject });
+    processThumbQueue();
+  });
+}
+
 function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large" }) {
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -80,13 +109,13 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
     return () => observer.disconnect();
   }, [enabled, category]);
 
-  // 进入可视区域后再获取缩略图
+  // 进入可视区域后再通过队列获取缩略图
   useEffect(() => {
     if (!inView) return;
     let cancelled = false;
-    getThumbnail(filePath).then((path) => {
-      if (!cancelled && path) {
-        setThumbSrc(convertFileSrc(path));
+    queueThumbnail(filePath).then((src) => {
+      if (!cancelled) {
+        setThumbSrc(src);
       }
     }).catch(() => {
       // 失败则保持空，显示图标
