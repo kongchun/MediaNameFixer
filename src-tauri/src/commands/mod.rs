@@ -10,12 +10,17 @@ use crate::models::{
 use crate::thumbnail;
 use crate::utils::{get_file_size, get_modified_time, get_creation_time, is_media_file, get_video_creation_time_with_source, get_mov_meta_creation_date};
 use std::path::Path;
+use std::sync::LazyLock;
 use tauri::State;
+use tokio::sync::Semaphore;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+// 缩略图生成全局并发限制：最多 4 个同时处理，避免滚动时大量请求阻塞 Rust 线程
+static THUMB_SEMAPHORE: LazyLock<Semaphore> = LazyLock::new(|| Semaphore::new(4));
 
 #[tauri::command]
 pub fn scan_files(folder_path: String, config_manager: State<'_, ConfigManager>) -> Vec<FileInfo> {
@@ -436,7 +441,8 @@ pub fn get_app_version() -> String {
 }
 
 #[tauri::command]
-pub fn get_thumbnail(file_path: String) -> Result<String, String> {
+pub async fn get_thumbnail(file_path: String) -> Result<String, String> {
+    let _permit = THUMB_SEMAPHORE.acquire().await.map_err(|e| e.to_string())?;
     thumbnail::generate_thumbnail(&file_path)
 }
 

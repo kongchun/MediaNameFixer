@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, memo } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   selectFolder,
@@ -50,7 +50,36 @@ function getFileCategory(ext: string): "image" | "video" | "other" {
   return "other";
 }
 
-function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large" }) {
+// 缩略图请求队列：限制并发数，避免滚动时同时发起过多 IPC 调用导致卡死
+const THUMB_QUEUE: { filePath: string; resolve: (src: string) => void; reject: (reason?: unknown) => void }[] = [];
+let THUMB_RUNNING = 0;
+const THUMB_MAX_CONCURRENT = 6;
+
+function processThumbQueue() {
+  if (THUMB_RUNNING >= THUMB_MAX_CONCURRENT || THUMB_QUEUE.length === 0) return;
+  const item = THUMB_QUEUE.shift()!;
+  THUMB_RUNNING++;
+  getThumbnail(item.filePath)
+    .then((path) => {
+      item.resolve(path ? convertFileSrc(path) : "");
+    })
+    .catch(() => {
+      item.reject();
+    })
+    .finally(() => {
+      THUMB_RUNNING--;
+      processThumbQueue();
+    });
+}
+
+function queueGetThumbnail(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    THUMB_QUEUE.push({ filePath, resolve, reject });
+    processThumbQueue();
+  });
+}
+
+const ThumbnailCell = memo(({ filePath, ext, enabled, size = "medium", isScrolling }: { filePath: string; ext: string; enabled: boolean; size?: "small" | "medium" | "large"; isScrolling: boolean }) => {
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [inView, setInView] = useState(false);
@@ -73,26 +102,26 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
           }
         });
       },
-      { rootMargin: "100px" } // 提前 100px 开始加载，平滑滚动体验
+      { rootMargin: "0px" } // 严格只在进入可视区域时加载，避免滚动时预加载过多
     );
 
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [enabled, category]);
 
-  // 进入可视区域后再获取缩略图
+  // 进入可视区域且未在滚动时，再获取缩略图
   useEffect(() => {
-    if (!inView) return;
+    if (!inView || isScrolling) return;
     let cancelled = false;
-    getThumbnail(filePath).then((path) => {
+    queueGetThumbnail(filePath).then((path) => {
       if (!cancelled && path) {
-        setThumbSrc(convertFileSrc(path));
+        setThumbSrc(path);
       }
     }).catch(() => {
       // 失败则保持空，显示图标
     });
     return () => { cancelled = true; };
-  }, [inView, filePath]);
+  }, [inView, filePath, isScrolling]);
 
   if (!enabled) return null;
 
@@ -113,6 +142,7 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
           alt=""
           className="w-full h-full object-cover"
           loading="lazy"
+          decoding="async"
           onLoad={() => setLoaded(true)}
           style={{ opacity: loaded ? 1 : 0, transition: "opacity 0.2s" }}
         />
@@ -125,7 +155,7 @@ function ThumbnailCell({ filePath, ext, enabled, size = "medium" }: { filePath: 
       )}
     </div>
   );
-}
+});
 
 export default function HomePage() {
   const { folderPath, setFolderPath, activeTab, setActiveTab, config, setConfig: setGlobalConfig, updateInfo, setUpdateInfo } = useAppState();
@@ -152,6 +182,16 @@ export default function HomePage() {
   const confirmCallbackRef = useRef<(() => void) | null>(null);
   const [backendArchiveOps, setBackendArchiveOps] = useState<ArchiveOperation[]>([]);
   const [appVersion, setAppVersion] = useState<string>("");
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleScroll = () => {
+    if (!isScrolling) setIsScrolling(true);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 150);
+  };
 
   // 合并子文件夹模式：调用后端预览
   useEffect(() => {
@@ -750,7 +790,7 @@ export default function HomePage() {
               <span className="text-primary">已预览 {archiveOps.length} 项</span>
             )}
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" onScroll={handleScroll}>
             <table className="w-full text-sm">
               <thead className="bg-muted sticky top-0">
                 <tr>
@@ -763,7 +803,7 @@ export default function HomePage() {
                     />
                   </th>
                   {config.show_thumbnail && (
-                    <th className={`${config.thumbnail_size === "small" ? "w-12" : config.thumbnail_size === "large" ? "w-20" : "w-16"} px-2 py-2 text-center font-medium text-muted-foreground`}>缩略图</th>
+                    <th className={`${config.thumbnail_size === "small" ? "w-16" : config.thumbnail_size === "large" ? "w-20" : "w-16"} px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap`}>缩略图</th>
                   )}
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
                     {activeTab === "rename" ? "原文件名" : "文件名"}
@@ -822,13 +862,13 @@ export default function HomePage() {
                     </td>
                   </tr>
                 )}
-                {filteredFiles.map((file, i) => {
+                {filteredFiles.map((file) => {
                   const isChecked = selectedPaths.has(file.path);
                   const finalNewName = getFinalNewName(file);
                   const targetFolder = archiveMap.get(file.path);
                   const dateInfo = previewDateMap.get(file.path);
                   return (
-                    <tr key={i} className={`hover:bg-accent/50 transition-colors group ${!isChecked ? 'opacity-50' : ''}`}>
+                    <tr key={file.path} className={`hover:bg-accent/50 transition-colors group ${!isChecked ? 'opacity-50' : ''}`}>
                       <td className="px-2 py-2 text-center">
                         <input
                           type="checkbox"
@@ -838,7 +878,7 @@ export default function HomePage() {
                       </td>
                       {config.show_thumbnail && (
                         <td className="px-2 py-2">
-                          <ThumbnailCell filePath={file.path} ext={file.ext} enabled={config.show_thumbnail ?? true} size={config.thumbnail_size} />
+                          <ThumbnailCell filePath={file.path} ext={file.ext} enabled={config.show_thumbnail ?? true} size={config.thumbnail_size} isScrolling={isScrolling} />
                         </td>
                       )}
                       <td className={`px-4 py-2 font-medium ${activeTab === "rename" && finalNewName && compareFileTime(file.name, finalNewName, config.time_tolerance_seconds ?? 2) === "<" ? "text-orange-500" : ""}`}>
