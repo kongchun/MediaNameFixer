@@ -207,7 +207,7 @@
           <li>改名/归档前增加确认弹窗</li>
         </ul>
       </div>
-      <a class="download-btn" href="./MediaNameFixer_0.2.0_x64-setup.exe" download>
+      <a class="download-btn" href="./MediaNameFixer_0.2.0_x64-setup.exe" download data-file="MediaNameFixer_0.2.0_x64-setup.exe">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         下载安装包
       </a>
@@ -229,7 +229,7 @@
           <li>UI细节打磨和交互体验提升</li>
         </ul>
       </div>
-      <a class="download-btn" href="./MediaNameFixer_0.1.9_x64-setup.exe" download>
+      <a class="download-btn" href="./MediaNameFixer_0.1.9_x64-setup.exe" download data-file="MediaNameFixer_0.1.9_x64-setup.exe">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         下载安装包
       </a>
@@ -252,7 +252,7 @@
           <li>软件启动默认加载上次路径及最近访问记录</li>
         </ul>
       </div>
-      <a class="download-btn" href="./MediaNameFixer_0.1.8_x64-setup.exe" download>
+      <a class="download-btn" href="./MediaNameFixer_0.1.8_x64-setup.exe" download data-file="MediaNameFixer_0.1.8_x64-setup.exe">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         下载安装包
       </a>
@@ -263,5 +263,21 @@
       <p>更多详情访问 <a href="https://techwebplus.cn/medianamefixer/" target="_blank">项目主页</a></p>
     </div>
   </div>
+
+  <script>
+    // 检测安装包是否存在，不存在则隐藏下载按钮
+    document.querySelectorAll('a[data-file]').forEach(function(link) {
+      var file = link.getAttribute('data-file');
+      fetch(file, { method: 'HEAD' })
+        .then(function(res) {
+          if (!res.ok) {
+            link.style.display = 'none';
+          }
+        })
+        .catch(function() {
+          link.style.display = 'none';
+        });
+    });
+  </script>
 </body>
 </html>
