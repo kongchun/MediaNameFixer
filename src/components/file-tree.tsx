@@ -6,6 +6,9 @@ import {
   FolderOpen,
   Clock,
   Star,
+  HardDrive,
+  Image,
+  Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listDirectories, getSpecialFolders } from "@/api/tauri";
@@ -67,7 +70,9 @@ function TreeItem({
           onClick={() => onSelect(node.path)}
         >
           <span className="mr-2 text-muted-foreground flex-shrink-0">
-            {node.isExpanded ? (
+            {node.path.endsWith(":\\") ? (
+              <HardDrive size={16} className="text-muted-foreground" />
+            ) : node.isExpanded ? (
               <FolderOpen size={16} className="text-blue-500" />
             ) : (
               <Folder size={16} className="text-blue-500" />
@@ -240,7 +245,13 @@ export function FileTree({
               }
             }}
           >
-            <Folder size={16} className="mr-2 text-blue-500 flex-shrink-0" />
+            {item.name === "桌面" ? (
+              <Monitor size={16} className="mr-2 text-blue-500 flex-shrink-0" />
+            ) : item.name === "图片" ? (
+              <Image size={16} className="mr-2 text-purple-500 flex-shrink-0" />
+            ) : (
+              <Folder size={16} className="mr-2 text-blue-500 flex-shrink-0" />
+            )}
             <span className="text-sm truncate">{item.name}</span>
           </div>
         ))}

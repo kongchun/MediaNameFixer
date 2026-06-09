@@ -11,6 +11,16 @@ function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [config.theme]);
 
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-background text-foreground font-sans antialiased">
       <main className="flex-1 overflow-hidden">

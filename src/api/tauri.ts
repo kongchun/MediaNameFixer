@@ -131,3 +131,11 @@ export async function downloadUpdate(url: string): Promise<string> {
 export async function installUpdate(path: string): Promise<void> {
   return invoke("install_update", { path });
 }
+
+export async function moveFiles(paths: string[], targetFolder: string): Promise<string[]> {
+  return invoke("move_files", { paths, targetFolder });
+}
+
+export async function deleteFiles(paths: string[]): Promise<number> {
+  return invoke("delete_files", { paths });
+}

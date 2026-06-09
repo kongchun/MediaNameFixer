@@ -36,6 +36,8 @@ pub fn run() {
             execute_rename,
             preview_archive,
             execute_archive,
+            move_files,
+            delete_files,
             get_config,
             set_config,
             add_recent_folder,

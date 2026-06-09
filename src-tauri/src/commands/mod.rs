@@ -192,6 +192,65 @@ pub fn execute_archive(operations: Vec<ArchiveOperation>) -> Result<(), String> 
 }
 
 #[tauri::command]
+pub fn move_files(paths: Vec<String>, target_folder: String) -> Result<Vec<String>, String> {
+    let target = Path::new(&target_folder);
+    if !target.exists() {
+        std::fs::create_dir_all(target).map_err(|e| e.to_string())?;
+    }
+    let mut moved_paths = Vec::new();
+    for path in paths {
+        let file_name = Path::new(&path)
+            .file_name()
+            .ok_or("Invalid file path")?
+            .to_string_lossy()
+            .to_string();
+        let dest = target.join(&file_name);
+        let final_dest = if dest.exists() {
+            let stem = Path::new(&file_name)
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let ext = Path::new(&file_name)
+                .extension()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let ext_part = if ext.is_empty() {
+                "".to_string()
+            } else {
+                format!(".{}", ext)
+            };
+            let mut idx = 1;
+            let mut new_dest = target.join(format!("{}_{}{}", stem, idx, ext_part));
+            while new_dest.exists() {
+                idx += 1;
+                new_dest = target.join(format!("{}_{}{}", stem, idx, ext_part));
+            }
+            new_dest
+        } else {
+            dest
+        };
+        std::fs::rename(&path, &final_dest).map_err(|e| e.to_string())?;
+        moved_paths.push(final_dest.to_string_lossy().to_string());
+    }
+    Ok(moved_paths)
+}
+
+#[tauri::command]
+pub fn delete_files(paths: Vec<String>) -> Result<usize, String> {
+    let mut count = 0;
+    for path in paths {
+        if !Path::new(&path).exists() {
+            continue;
+        }
+        trash::delete(&path).map_err(|e| e.to_string())?;
+        count += 1;
+    }
+    Ok(count)
+}
+
+#[tauri::command]
 pub fn get_special_folders() -> Vec<QuickAccessItem> {
     let mut items = Vec::new();
     if let Some(path) = dirs::desktop_dir() {

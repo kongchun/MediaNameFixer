@@ -18,6 +18,8 @@ import {
   openFolderAndSelect,
   downloadUpdate,
   installUpdate,
+  moveFiles,
+  deleteFiles,
 } from "../api/tauri";
 import { checkRemoteVersion, isNewVersion } from "../api/update";
 import { useAppState } from "../store";
@@ -32,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
 import { MessageModal, ConfirmModal } from "@/components/message-modal";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check, FileImage } from "lucide-react";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check, FileImage, Trash2 } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -560,6 +562,63 @@ export default function HomePage() {
     });
   }
 
+  async function handleMoveFiles() {
+    if (selectedPaths.size === 0) {
+      showModal("提示", "请先选择要移动的文件");
+      return;
+    }
+    const target = await selectFolder();
+    if (!target) return;
+
+    confirmCallbackRef.current = async () => {
+      const paths = Array.from(selectedPaths);
+      try {
+        await moveFiles(paths, target);
+        showModal("移动完成", `已成功移动 ${paths.length} 个文件到:\n${target}`);
+      } catch (e) {
+        showModal("移动失败", String(e));
+      }
+      const source = selectedFolder || folderPath;
+      if (source) {
+        const list = await scanFiles(source);
+        setFiles(list);
+        setSelectedPaths(new Set());
+      }
+    };
+    setConfirmModal({
+      open: true,
+      title: "确认移动",
+      message: `即将移动 ${selectedPaths.size} 个文件到:\n${target}\n此操作不可恢复，是否继续？`,
+    });
+  }
+
+  async function handleDeleteFiles() {
+    if (selectedPaths.size === 0) {
+      showModal("提示", "请先选择要删除的文件");
+      return;
+    }
+    confirmCallbackRef.current = async () => {
+      const paths = Array.from(selectedPaths);
+      try {
+        const count = await deleteFiles(paths);
+        showModal("删除完成", `已成功删除 ${count} 个文件`);
+      } catch (e) {
+        showModal("删除失败", String(e));
+      }
+      const source = selectedFolder || folderPath;
+      if (source) {
+        const list = await scanFiles(source);
+        setFiles(list);
+        setSelectedPaths(new Set());
+      }
+    };
+    setConfirmModal({
+      open: true,
+      title: "确认删除",
+      message: `即将删除 ${selectedPaths.size} 个文件到回收站，是否继续？`,
+    });
+  }
+
   const filteredFiles = useMemo(() => {
     let result = files;
     if (mediaFilter !== "all") {
@@ -752,38 +811,94 @@ export default function HomePage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* 路径和刷新 + 设置 */}
           <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
-            <span className="text-xs text-muted-foreground truncate flex-1">
-              {selectedFolder || folderPath || "未选择文件夹"}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={async () => {
-                const target = selectedFolder || folderPath;
-                if (!target) return;
-                try {
-                  await openFolder(target);
-                } catch (e) {
-                  showModal("错误", "打开文件夹失败: " + e);
-                  console.error("打开文件夹失败:", e);
-                }
-              }}
-              disabled={!selectedFolder && !folderPath}
-              title="打开当前文件夹"
-            >
-              <ExternalLink size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={handleRefresh}
-              disabled={!folderPath}
-              title="刷新当前文件夹"
-            >
-              <RefreshCw size={14} />
-            </Button>
+            <div className="flex items-center gap-0.5 truncate flex-1 overflow-hidden">
+              {(selectedFolder || folderPath || "").split("\\").map((part, idx, arr) => {
+                const fullPath = arr.slice(0, idx + 1).join("\\");
+                const isLast = idx === arr.length - 1;
+                return (
+                  <span key={idx} className="flex items-center shrink-0">
+                    {idx > 0 && (
+                      <span className="text-xs text-muted-foreground mx-0.5">/</span>
+                    )}
+                    <button
+                      className={`text-xs truncate max-w-[120px] hover:underline ${isLast ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                      title={fullPath}
+                      onClick={async () => {
+                        if (!fullPath) return;
+                        try {
+                          const list = await scanFiles(fullPath);
+                          setFiles(list);
+                          if (selectedFolder) setSelectedFolder("");
+                          updateSelectedPaths(list.map((f) => f.path));
+                        } catch (e) {
+                          showModal("错误", "打开文件夹失败: " + e);
+                        }
+                      }}
+                    >
+                      {part || (idx === 0 ? "\\" : "")}
+                    </button>
+                  </span>
+                );
+              })}
+              {!selectedFolder && !folderPath && (
+                <span className="text-xs text-muted-foreground">未选择文件夹</span>
+              )}
+            </div>
+            {activeTab !== "settings" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={async () => {
+                    const target = selectedFolder || folderPath;
+                    if (!target) return;
+                    try {
+                      await openFolder(target);
+                    } catch (e) {
+                      showModal("错误", "打开文件夹失败: " + e);
+                      console.error("打开文件夹失败:", e);
+                    }
+                  }}
+                  disabled={!selectedFolder && !folderPath}
+                  title="打开当前文件夹"
+                >
+                  <ExternalLink size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleRefresh}
+                  disabled={!folderPath}
+                  title="刷新当前文件夹"
+                >
+                  <RefreshCw size={14} />
+                </Button>
+                <div className="h-4 w-px bg-border mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleMoveFiles}
+                  disabled={selectedPaths.size === 0}
+                  title="移动选中文件到指定文件夹"
+                >
+                  <FolderOpen size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={handleDeleteFiles}
+                  disabled={selectedPaths.size === 0}
+                  title="删除选中文件"
+                >
+                  <Trash2 size={14} />
+                </Button>
+                <div className="h-4 w-px bg-border mx-1" />
+              </>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -1182,7 +1297,7 @@ export default function HomePage() {
                 }}
                 disabled={updateStep === "downloading" || updateStep === "installing"}
               >
-                暂时取消
+                取消
               </Button>
               {updateStep === "idle" && (
                 <Button
