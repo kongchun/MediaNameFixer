@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/file-tree";
 import { MessageModal, ConfirmModal } from "@/components/message-modal";
-import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check, FileImage, Trash2 } from "lucide-react";
+import { FolderOpen, Eye, Play, Image, Video, Layers, RefreshCw, Wrench, ExternalLink, Check, FileImage, Trash2, FolderInput } from "lucide-react";
 
 const IMAGE_EXTS = new Set([
   "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif",
@@ -884,7 +884,7 @@ export default function HomePage() {
                   disabled={selectedPaths.size === 0}
                   title="移动选中文件到指定文件夹"
                 >
-                  <FolderOpen size={14} />
+                  <FolderInput size={14} />
                 </Button>
                 <Button
                   variant="ghost"
