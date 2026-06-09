@@ -1182,7 +1182,7 @@ export default function HomePage() {
                 }}
                 disabled={updateStep === "downloading" || updateStep === "installing"}
               >
-                稍后提醒
+                暂时取消
               </Button>
               {updateStep === "idle" && (
                 <Button
@@ -1193,7 +1193,14 @@ export default function HomePage() {
                     try {
                       const path = await downloadUpdate(updateInfo.downloadUrl);
                       setDownloadPath(path);
-                      setUpdateStep("downloaded");
+                      // 下载完成后自动执行安装
+                      setUpdateStep("installing");
+                      try {
+                        await installUpdate(path);
+                      } catch (e) {
+                        showModal("安装失败", String(e));
+                        setUpdateStep("downloaded");
+                      }
                     } catch (e) {
                       showModal("下载失败", String(e));
                       setUpdateStep("idle");

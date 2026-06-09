@@ -728,7 +728,7 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">公众号：苏州前端</p>
                     <div className="flex gap-2 pt-1">
                       <button
-                        onClick={() => openUrl("https://techwebplus.cn/")}
+                        onClick={() => openUrl("https://techwebplus.cn/medianamefixer")}
                         className="group flex items-center justify-center h-10 w-10 rounded-lg border bg-background hover:w-24 hover:-translate-y-0.5 hover:bg-muted transition-all duration-300 cursor-pointer overflow-hidden"
                         title="访问主页"
                       >

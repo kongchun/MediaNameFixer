@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaNameFixer - 文件批量重命名工具</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #86868b;
+      margin-bottom: 40px;
+      font-size: 16px;
+    }
+    .hero {
+      background: #fff;
+      border-radius: 20px;
+      padding: 48px 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      text-align: center;
+    }
+    .hero p {
+      font-size: 16px;
+      color: #515154;
+      line-height: 1.8;
+      max-width: 600px;
+      margin: 0 auto 28px;
+    }
+    .highlight {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+    .tag {
+      background: #f5f5f7;
+      color: #1d1d1f;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .download-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+      padding: 18px 40px;
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      min-width: 220px;
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .download-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+    .btn-primary {
+      background: #0071e3;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #0077ed;
+    }
+    .btn-secondary {
+      background: #1d1d1f;
+      color: #fff;
+    }
+    .btn-secondary:hover {
+      background: #333;
+    }
+    .features {
+      margin-top: 32px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    .feature-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1d1d1f;
+    }
+    .feature-desc {
+      font-size: 14px;
+      color: #515154;
+      line-height: 1.7;
+    }
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #86868b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .demo-section {
+      margin: 24px 0;
+    }
+    .demo-card {
+      background: #f5f5f7;
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .demo-caption {
+      text-align: center;
+      font-size: 14px;
+      color: #515154;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .demo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .demo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 13px;
+    }
+    .demo-before {
+      color: #86868b;
+      text-decoration: line-through;
+      flex: 1;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-arrow {
+      color: #0071e3;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .demo-after {
+      color: #1d1d1f;
+      font-weight: 600;
+      flex: 1;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-summary {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #0071e3;
+      font-weight: 500;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 13px;
+      color: #86868b;
+    }
+    .footer a {
+      color: #0071e3;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MediaNameFixer</h1>
+    <p class="subtitle">专为摄影师和影像爱好者设计的文件批量重命名工具</p>
+
+    <div class="hero">
+      <p>
+        自动读取照片/视频的拍摄时间（EXIF、QuickTime 元数据），按时间规则一键重命名，
+        彻底解决相机默认文件名混乱、难以检索的问题。
+      </p>
+      <div class="demo-section">
+        <div class="demo-card">
+          <div class="demo-list">
+            <div class="demo-row">
+              <span class="demo-before">DSC_0342.JPG</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-05-01_001.jpg</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-before">IMG_8765.MOV</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-05-01_002.mov</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-before">P1060923.RW2</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-04-30_003.raw</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-before">GOPR1234.MP4</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-05-02_004.mp4</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-before">微信图片_20240501123456.jpg</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-05-01_005.jpg</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-before">Screenshot_20240502_083015.png</span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-after">2024-05-02_006.png</span>
+            </div>
+          </div>
+          <div class="demo-summary">10,000+ 无序文件 → 按拍摄时间精准排序归档</div>
+        </div>
+      </div>
+      <div class="download-group">
+        <a class="download-btn btn-primary" href="https://techwebplus.cn/medianamefixer/" target="_blank">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          官网下载
+        </a>
+        <a class="download-btn btn-secondary" href="https://github.com/kongchun/MediaNameFixer/releases" target="_blank">
+          <svg viewBox="0 0 1024 1024" fill="currentColor"><path d="M511.6 76.3C264.3 76.2 64 276.4 64 523.5 64 718.9 189.3 885 363.8 946c23.5 5.9 19.9-10.8 19.9-22.2v-77.5c-135.7 15.9-141.2-73.9-150.3-88.9C215 726 171.5 718 184.5 703c30.9-15.9 62.4 4 98.9 57.9 26.4 39.1 77.9 32.5 104 26 5.7-23.5 17.9-44.5 34.7-60.8-140.6-25.2-199.2-111-199.2-213 0-49.5 16.3-95 48.3-131.7-20.4-60.5 1.9-112.3 4.9-120 58.1-5.2 118.5 41.6 123.2 45.3 33-8.9 70.7-13.6 112.9-13.6 42.4 0 80.2 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.3-43.9 2.9 7.7 24.7 58.3 5.5 118 32.4 36.8 48.9 82.7 48.9 132.3 0 102.2-59 188.1-200 212.9 23.5 23.2 38.1 55.4 38.1 91v112.5c0.8 9 0 17.9 15 17.9 177.1-59.7 304.6-227 304.6-424.1 0-247.2-200.4-447.3-447.5-447.3z"/></svg>
+          GitHub 下载
+        </a>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="section-label">功能特色</div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📷</div>
+          <div class="feature-title">EXIF 智能解析</div>
+          <div class="feature-desc">自动读取 JPEG、RAW 等照片文件的 EXIF 元数据，精准提取拍摄时间作为重命名依据。支持佳能、尼康、索尼、富士等主流相机格式，无需手动输入。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎬</div>
+          <div class="feature-title">视频时间戳支持</div>
+          <div class="feature-desc">深度解析 MP4、MOV、3GP 等视频文件的 QuickTime / mvhd 元数据，正确处理 creation_time 与时区偏移，让视频文件名也能精准反映拍摄时刻。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📁</div>
+          <div class="feature-title">一键归档整理</div>
+          <div class="feature-desc">支持按年/月/日自动创建文件夹结构，将重命名后的文件有序归档。告别杂乱的根目录，项目资料一目了然，后期查找高效便捷。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼️</div>
+          <div class="feature-title">缩略图预览</div>
+          <div class="feature-desc">内置高性能缩略图生成引擎，文件列表中即可快速预览照片与视频内容。支持并发加载与懒加载优化，万级文件也能流畅浏览。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <div class="feature-title">自动更新</div>
+          <div class="feature-desc">启动时自动检测最新版本，支持一键下载并安装更新。双地址检查机制（官网 + GitHub Releases）确保获取通道稳定可靠。</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💻</div>
+          <div class="feature-title">离线运行</div>
+          <div class="feature-desc">基于 Tauri 构建的本地桌面应用，所有文件处理均在本地完成，无需联网上传。数据隐私完全由你掌控，随时随地安心使用。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>更多详情访问 <a href="https://github.com/kongchun/MediaNameFixer" target="_blank">GitHub 项目主页</a></p>
+    </div>
+  </div>
+</body>
+</html>
