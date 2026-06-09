@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
-  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.2.0_x64-setup.exe",
-  "releaseNotes": "【新特性】\n1. 新增应用自动更新（检测→下载→安装一键完成）\n2. 新增缩略图预览（支持图片/视频，EXIF方向自动修正）\n3. 缩略图三档尺寸可调（小/中/大）\n4. 缩略图缓存自动管理（上限1GB，支持一键清理）\n5. 文件快捷操作（点击缩略图打开/定位文件夹）"
+  "version": "0.2.1",
+  "downloadUrl": "https://techwebplus.cn/medianamefixer/MediaNameFixer_0.2.1_x64-setup.exe",
+  "releaseNotes": "【新特性】\n1. 新增批量移动文件到指定文件夹\n2. 新增删除文件移至系统回收站\n3. 地址栏支持面包屑导航，点击跳转\n4. 界面操作按钮分区优化\n5. NSIS安装包支持中英文自动切换"
 }
